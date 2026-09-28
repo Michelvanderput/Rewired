@@ -31,6 +31,23 @@ module.exports = async (req, res) => {
   if (missing.length) return json(res, 503, { error: "not_configured", missing });
 
   const now = new Date();
+
+  // Diagnostics (?test=1): send a test to every subscription and report what the push service answers
+  if (new URL(req.url, "http://x").searchParams.get("test") === "1") {
+    const out = [];
+    for (const { rec } of await allSubs()) {
+      if (!rec) continue;
+      const host = new URL(rec.subscription.endpoint).host;
+      try {
+        const r = await send(rec, message("test", rec, now.getTime()));
+        out.push({ host, tz: rec.tz, status: r.statusCode, body: r.body || "" });
+      } catch (e) {
+        out.push({ host, tz: rec.tz, status: e.statusCode || null, body: String(e.body || e.message).slice(0, 300) });
+      }
+    }
+    return json(res, 200, { subject: process.env.VAPID_SUBJECT || "(niet ingesteld)", results: out });
+  }
+
   const report = { subs: 0, sent: 0, removed: 0, errors: 0 };
   for (const { key: k, rec } of await allSubs()) {
     if (!rec) { await deleteSubKey(k); continue; }
