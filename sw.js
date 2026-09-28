@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v2";
+const VERSION = "rewired-v3";
 const SHELL = [
   "./",
   "index.html",

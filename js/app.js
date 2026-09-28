@@ -416,9 +416,9 @@
     const row = root.querySelector(".mood-row");
     row.addEventListener("click", e => {
       const b = e.target.closest("button"); if (!b) return;
-      $$("button", row).forEach(x => x.classList.toggle("on", x === b));
+      $$("button", row).forEach(x => { x.classList.toggle("on", x === b); if (x !== b) gsap.to(x, { scale: 1, rotation: 0, duration: 0.2 }); });
       haptic(); Sound.tap();
-      gsap.fromTo(b, { rotation: -15 }, { rotation: 0, duration: 0.6, ease: "elastic.out(1,0.4)" });
+      gsap.fromTo(b, { rotation: -15 }, { rotation: 0, scale: 1.08, duration: 0.6, ease: "elastic.out(1,0.4)" });
       cb(b.dataset.v);
     });
   }
