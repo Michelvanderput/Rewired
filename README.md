@@ -21,7 +21,6 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Internet Blocker | Stapsgewijze handleiding voor de iOS Schermtijd-contentfilter |
 | Onboarding | Vragenlijst, triggers, redenen, startmoment, getekende belofte (handtekening) en persoonlijk 90-dagenplan |
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
-
 | Pushmeldingen | Ochtend (streak + mijlpalen), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
 
 Niet overgenomen, omdat daar een server met accounts voor nodig is: community-forum en AI-coach.
