@@ -1,0 +1,15 @@
+{
+  "name": "Rewired – Herprogrammeer je brein",
+  "short_name": "Rewired",
+  "description": "Streak tracker, lichttherapie, ademhaling, meditatie en dagelijkse dopamine reset.",
+  "lang": "nl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07070d",
+  "theme_color": "#07070d",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
