@@ -44,6 +44,11 @@
     return buf;
   }
 
+  // "playback" ignores the iPhone silent switch; used only during sessions
+  function session(on) {
+    try { if (navigator.audioSession) navigator.audioSession.type = on ? "playback" : "auto"; } catch (e) {}
+  }
+
   const Sound = {
     tap() { blip(880, 0.05, "sine", 0.035); },
     toggle(onState) { onState ? (blip(660, 0.07), blip(990, 0.1, "sine", 0.05, 0.06)) : blip(440, 0.08); },
@@ -58,6 +63,7 @@
     ambient(kind = "brown", vol = 0.22) {
       if (!on()) return () => {};
       const c = ac(); if (!c) return () => {};
+      session(true);
       const src = c.createBufferSource();
       src.buffer = noiseBuffer(c, kind); src.loop = true;
       const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = kind === "brown" ? 900 : 1600;
@@ -75,6 +81,7 @@
         g.gain.setValueAtTime(g.gain.value, t);
         g.gain.linearRampToValueAtTime(0, t + 1.2);
         src.stop(t + 1.3); lfo.stop(t + 1.3);
+        session(false);
       };
     },
 
@@ -82,6 +89,7 @@
     binaural(base = 200, beat = 10, vol = 0.07) {
       if (!on()) return () => {};
       const c = ac(); if (!c || !c.createStereoPanner) return () => {};
+      session(true);
       const g = c.createGain(); g.gain.value = 0; g.connect(c.destination);
       const mk = (f, pan) => {
         const o = c.createOscillator(), p = c.createStereoPanner();
@@ -95,6 +103,7 @@
         g.gain.setValueAtTime(g.gain.value, t);
         g.gain.linearRampToValueAtTime(0, t + 1);
         oscs.forEach(o => o.stop(t + 1.1));
+        session(false);
       };
     },
 

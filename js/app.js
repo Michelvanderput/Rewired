@@ -320,9 +320,15 @@
   /*                      RENDERING                         */
   /* ====================================================== */
 
+  // stop infinite tweens (orb etc.) on nodes that are about to be removed
+  function setView(v, html) {
+    gsap.killTweensOf(v.querySelectorAll("*"));
+    v.innerHTML = html;
+  }
+
   function render(animate = true) {
     const v = $("#view");
-    v.innerHTML = VIEWS[tab]();
+    setView(v, VIEWS[tab]());
     afterRender(v, animate);
   }
 
@@ -348,8 +354,9 @@
 
   function startTicker() {
     clearInterval(ticker);
-    let lastDays = Store.streakDays();
+    let lastDays = Store.streakDays(), lastKey = Store.dayKey();
     ticker = setInterval(() => {
+      if (Store.dayKey() !== lastKey) { lastKey = Store.dayKey(); if (tab === "home" || tab === "progress") render(false); }
       if (tab !== "home") return;
       const t = $("[data-timer]");
       if (t) t.textContent = fmtDur(Store.streakMs());
@@ -369,7 +376,7 @@
     gsap.to(v, {
       opacity: 0, x: -24 * dir, duration: 0.18, ease: "power2.in", onComplete: () => {
         v.scrollTop = 0;
-        v.innerHTML = VIEWS[tab]();
+        setView(v, VIEWS[tab]());
         gsap.fromTo(v, { opacity: 0, x: 24 * dir }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out", clearProps: "transform" });
         afterRender(v, true);
       }
@@ -990,6 +997,7 @@
 
   /* ---------- init ---------- */
   FX.ambientBg();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if (Store.s.onboarded) boot(); else onboarding();
 
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
