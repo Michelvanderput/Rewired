@@ -284,6 +284,9 @@
         </div>
       </div>
 
+      <div class="section-title" data-anim><h3>Account & opslag</h3></div>
+      <div data-sync data-anim></div>
+
       ${!standalone ? `<div class="card" data-anim style="margin-top:12px;border-color:rgba(34,211,238,.4)">
         <div style="font-weight:600">📲 Installeer op je iPhone</div>
         <p class="small muted" style="margin-top:6px">Open in Safari, tik op <b style="color:#fff">Deel</b> <span style="display:inline-block;vertical-align:-3px">⬆️</span> en kies <b style="color:#fff">Zet op beginscherm</b>. Dan werkt Rewired als een echte app, fullscreen en offline.</p>
@@ -311,7 +314,7 @@
       <div class="card flush" data-anim>
         <button class="list-item" style="width:100%;text-align:left" data-action="export"><span class="li-ico">📤</span><span class="li-body"><div class="li-title">Back-up exporteren</div><div class="li-sub">Bewaar je data als bestand</div></span></button>
         <label class="list-item" style="width:100%;cursor:pointer"><span class="li-ico">📥</span><span class="li-body"><div class="li-title">Back-up importeren</div><div class="li-sub">Herstel vanaf een bestand</div></span><input type="file" accept="application/json,.json" data-import style="display:none"></label>
-        <button class="list-item" style="width:100%;text-align:left" data-action="wipe"><span class="li-ico">🗑️</span><span class="li-body"><div class="li-title danger-text">Alles wissen</div><div class="li-sub">Begin volledig opnieuw</div></span></button>
+        <button class="list-item" style="width:100%;text-align:left" data-action="wipe"><span class="li-ico">🗑️</span><span class="li-body"><div class="li-title danger-text">Alles wissen op deze telefoon</div><div class="li-sub">Begin opnieuw${Sync.user ? " · je wordt uitgelogd, cloud-kopie blijft" : ""}</div></span></button>
       </div>
 
       <p class="small muted" style="text-align:center;margin-top:26px;line-height:1.6">Al je gegevens blijven privé op dit apparaat.<br>Rewired is een zelfhulp-tool en vervangt geen professionele hulp.<br>Hulp nodig? Bel <b>113</b> (0800-0113) bij crisis.</p>
@@ -343,7 +346,7 @@
     $$("[data-grow]", v).forEach((el, i) => gsap.from(el, { scaleY: 0, transformOrigin: "50% 100%", duration: 0.8, delay: 0.3 + i * 0.02, ease: "power3.out" }));
     $$("[data-cal]", v).forEach((el, i) => animate && gsap.from(el, { scale: 0, opacity: 0, duration: 0.4, delay: 0.2 + i * 0.012, ease: "back.out(2)" }));
 
-    if (tab === "profile") Push.mount($("[data-push]", v));
+    if (tab === "profile") { Push.mount($("[data-push]", v)); Sync.mount($("[data-sync]", v)); }
 
     if (tab === "home") {
       const ring = $("[data-ring]", v);
@@ -729,7 +732,7 @@
       <div style="margin-top:10px"><button class="btn ghost" data-no>Annuleren</button></div>`, {
       onMount(sh, close) {
         $("[data-no]", sh).addEventListener("click", close);
-        $("[data-yes]", sh).addEventListener("click", () => { Store.reset(); close(); setTimeout(() => location.reload(), 400); });
+        $("[data-yes]", sh).addEventListener("click", async () => { await Sync.logout(); Store.reset(); close(); setTimeout(() => location.reload(), 400); });
       }
     });
   }
@@ -795,9 +798,17 @@
       {
         html: () => `<div style="text-align:center;padding-top:30px">${logo}
           <h1>Herprogrammeer<br><span class="grad-text">je brein.</span></h1>
-          <p class="lead">Gebaseerd op neurowetenschap. Streak tracking, lichttherapie, ademwerk en een dagelijkse dopamine reset. Alles 100% privé op je iPhone.</p></div>`,
+          <p class="lead">Gebaseerd op neurowetenschap. Streak tracking, lichttherapie, ademwerk en een dagelijkse dopamine reset. Alles 100% privé op je iPhone.</p>
+          <button class="link" data-have-account style="margin-top:22px;color:var(--accent2);font-weight:600;font-size:15px">Ik heb al een account →</button></div>`,
         btn: "Begin mijn reis",
         mount: () => {
+          $("[data-have-account]", body).addEventListener("click", () => {
+            haptic(); Sound.tap();
+            Sync.authSheet("login", null, { afterLogin: () => {
+              if (!Store.s.onboarded) { toast("Nog geen gegevens in dit account, doorloop de intro"); return; }
+              gsap.to(el, { opacity: 0, duration: 0.5, onComplete: () => { el.remove(); boot(); } });
+            } });
+          });
           const p = $("[data-path]", body), len = p.getTotalLength();
           gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.6, ease: "power2.inOut", delay: 0.3 });
           gsap.from("[data-logo]", { scale: 0.6, rotation: -20, duration: 1.4, ease: "elastic.out(1,0.6)" });
@@ -983,6 +994,7 @@
 
     // re-sync on return from background
     document.addEventListener("visibilitychange", () => {
+      Sync.sync();
       if (document.hidden) return;
       if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
       if (tab === "home") render(false);
@@ -1005,6 +1017,7 @@
     startTicker();
     setTimeout(checkMilestone, 1200);
     Push.ensure();
+    Sync.sync();
     const open = new URLSearchParams(location.search).get("open");
     if (open) { history.replaceState(null, "", location.pathname); setTimeout(() => openFromNotification(open), 900); }
   }

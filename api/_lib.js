@@ -145,12 +145,36 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readBody(req) {
+async function readBody(req, max = 20000) {
   if (req.body && typeof req.body === "object") return req.body;
   if (typeof req.body === "string") return JSON.parse(req.body || "{}");
   let data = "";
-  for await (const c of req) { data += c; if (data.length > 20000) throw new Error("too large"); }
+  for await (const c of req) { data += c; if (data.length > max) throw new Error("too large"); }
   return JSON.parse(data || "{}");
 }
 
-module.exports = { redis, saveSub, getSub, deleteSubKey, allSubs, config, validSubscription, validTime, validTz, localNow, toMin, message, send, json, readBody, DAY };
+/* ---------- accounts ---------- */
+const sha256 = s => crypto.createHash("sha256").update(s).digest("hex");
+const validUser = u => typeof u === "string" && /^[a-z0-9_.-]{3,32}$/.test(u);
+const b64ok = (s, bytes) => typeof s === "string" && /^[A-Za-z0-9_-]+$/.test(s) && Buffer.from(s, "base64url").length === bytes;
+const kvReady = () => !!(KV_URL && KV_TOKEN);
+
+/* Returns the username for "Authorization: Bearer <token>", or null */
+async function sessionUser(req) {
+  const m = /^Bearer ([A-Za-z0-9_-]{20,})$/.exec(req.headers.authorization || "");
+  if (!m) return null;
+  return (await redis("GET", "session:" + sha256(m[1]))) || null;
+}
+
+/* Fixed-window rate limit: true when the caller is still allowed */
+async function allow(key, max, seconds) {
+  const n = await redis("INCR", "rl:" + key);
+  if (n === 1) await redis("EXPIRE", "rl:" + key, seconds);
+  return n <= max;
+}
+
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
+}
+
+module.exports = { redis, saveSub, getSub, deleteSubKey, allSubs, config, validSubscription, validTime, validTz, localNow, toMin, message, send, json, readBody, DAY, sha256, validUser, b64ok, kvReady, sessionUser, allow, clientIp };

@@ -21,6 +21,7 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Internet Blocker | Stapsgewijze handleiding voor de iOS Schermtijd-contentfilter |
 | Onboarding | Vragenlijst, triggers, redenen, startmoment, getekende belofte (handtekening) en persoonlijk 90-dagenplan |
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
+| Account & cloud-opslag | Gebruikersnaam + wachtwoord, alles **end-to-end versleuteld** (AES-GCM) vóór het de telefoon verlaat, sync tussen apparaten met samenvoegen, herstellen op een nieuwe telefoon |
 | Pushmeldingen | Ochtend (streak + mijlpalen), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
 
 Niet overgenomen, omdat daar een server met accounts voor nodig is: community-forum en AI-coach.
@@ -57,6 +58,16 @@ De server bestaat uit Vercel Functions in `api/` en gebruikt gratis Upstash Redi
 Een melding wordt tot 90 minuten na het ingestelde tijdstip nog verstuurd en nooit twee keer per dag.
 Op de server staan alleen: je push-abonnement, tijdzone, tijden, naam en startdatum van je streak (voor "Dag 12 🔥").
 
+## Account & versleuteling
+
+- Je wachtwoord verlaat de telefoon nooit. De app leidt er met PBKDF2 (600.000 rondes) twee sleutels van af:
+  een **inlogsleutel** (gaat naar de server en wordt daar nog eens met scrypt gehasht) en een **versleutelsleutel**
+  (blijft op de telefoon).
+- Alle gegevens worden met AES-256-GCM versleuteld voordat ze worden geüpload. Upstash en Vercel zien alleen onleesbare data.
+- Wachtwoord vergeten = de cloud-kopie is niet te herstellen. De gegevens op je telefoon blijven wel.
+- Wijzigingen op twee apparaten worden samengevoegd (dagboek, drang-logs, terugvallen, check-ins).
+- Maximaal 25 accounts (in te stellen met `MAX_USERS`), rate limiting op inloggen en registreren.
+
 ## Structuur
 
 ```
@@ -70,7 +81,8 @@ js/tools.js           Lichttherapie, ademhaling, meditatie, noodmodus
 js/app.js             Onboarding, views, sheets, events
 sw.js                 Service worker: offline gebruik + pushmeldingen ontvangen
 js/push.js            Meldingen aan/uit, tijden, synchroniseren met de server
-api/                  Vercel Functions: vapid, subscribe, test, cron (+ _lib.js)
+js/sync.js            Account, end-to-end versleuteling, cloud-sync en samenvoegen
+api/                  Vercel Functions: auth, data, vapid, subscribe, test, cron (+ _lib.js)
 vercel.json           Dagelijkse cron + headers
 ```
 

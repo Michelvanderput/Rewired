@@ -44,7 +44,13 @@
     get s() { return state; },
     dayKey,
     save() {
+      state.updatedAt = Date.now();
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
+    },
+    /* replace the whole state (used by cloud sync) without bumping updatedAt */
+    replace(next) {
+      state = Object.assign(defaults(), next);
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
     },
     set(patch) { Object.assign(state, patch); this.save(); },
     reset() { state = defaults(); this.save(); },
