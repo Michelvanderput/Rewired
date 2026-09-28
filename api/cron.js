@@ -1,0 +1,58 @@
+/* GET /api/cron → send every reminder that is due.
+   Call it every 5–15 minutes (cron-job.org) and/or via the daily Vercel cron.
+   Auth: "Authorization: Bearer <CRON_SECRET>" (Vercel cron sends this) or ?key=<CRON_SECRET>. */
+const { config, json, allSubs, saveSub, deleteSubKey, localNow, toMin, message, send } = require("./_lib");
+
+// A reminder is still sent when the cron runs up to this many minutes late
+const WINDOW = 90;
+
+function due(rec, now) {
+  const { day, min } = localNow(rec.tz, now);
+  const out = [];
+  for (const [id, r] of Object.entries(rec.reminders || {})) {
+    if (!r.on) continue;
+    const t = toMin(r.time);
+    const late = (min - t + 1440) % 1440; // handles windows that cross midnight
+    const sentFor = (rec.lastSent || {})[id];
+    // the "day" a reminder belongs to: if we are past midnight but inside the window of yesterday's slot
+    const slotDay = min < t ? localNow(rec.tz, new Date(now.getTime() - late * 60000)).day : day;
+    if (late < WINDOW && sentFor !== slotDay) out.push({ id, slotDay });
+  }
+  return out;
+}
+
+module.exports = async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  const auth = req.headers.authorization || "";
+  const key = new URL(req.url, "http://x").searchParams.get("key");
+  if (!secret || (auth !== `Bearer ${secret}` && key !== secret)) return json(res, 401, { error: "unauthorized" });
+
+  const missing = config();
+  if (missing.length) return json(res, 503, { error: "not_configured", missing });
+
+  const now = new Date();
+  const report = { subs: 0, sent: 0, removed: 0, errors: 0 };
+  for (const { key: k, rec } of await allSubs()) {
+    if (!rec) { await deleteSubKey(k); continue; }
+    report.subs++;
+    const list = due(rec, now);
+    if (!list.length) continue;
+    rec.lastSent = rec.lastSent || {};
+    let gone = false;
+    for (const { id, slotDay } of list) {
+      try {
+        await send(rec, message(id, rec, now.getTime()));
+        rec.lastSent[id] = slotDay;
+        report.sent++;
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) { gone = true; break; }
+        report.errors++;
+      }
+    }
+    if (gone) { await deleteSubKey(k); report.removed++; }
+    else await saveSub(rec);
+  }
+  json(res, 200, report);
+};
+
+module.exports.due = due;

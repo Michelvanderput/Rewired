@@ -22,7 +22,9 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Onboarding | Vragenlijst, triggers, redenen, startmoment, getekende belofte (handtekening) en persoonlijk 90-dagenplan |
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
 
-Niet overgenomen, omdat daar een server voor nodig is: community-forum, AI-coach en pushmeldingen.
+| Pushmeldingen | Ochtend (streak + mijlpalen), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
+
+Niet overgenomen, omdat daar een server met accounts voor nodig is: community-forum en AI-coach.
 
 ## Op je iPhone zetten
 
@@ -35,6 +37,26 @@ De app moet via **https** bereikbaar zijn. De makkelijkste manier is GitHub Page
 
 Lokaal testen: `python3 -m http.server 8080` en open `http://localhost:8080`.
 
+## Pushmeldingen instellen (eenmalig)
+
+Meldingen werken op iPhone met **iOS 16.4+**, en alleen als de app op je beginscherm staat.
+De server bestaat uit Vercel Functions in `api/` en gebruikt gratis Upstash Redis om je abonnement te bewaren.
+
+1. **Opslag:** Vercel → je project → **Storage** → **Create** → **Upstash for Redis** (gratis) → koppel aan het project.
+   Vercel zet `KV_REST_API_URL` en `KV_REST_API_TOKEN` dan zelf klaar.
+2. **Sleutels:** Vercel → **Settings → Environment Variables**, voeg toe:
+   - `VAPID_PUBLIC_KEY` en `VAPID_PRIVATE_KEY`: maak ze met `npx web-push generate-vapid-keys`
+   - `VAPID_SUBJECT`: `mailto:jouw@email.nl`
+   - `CRON_SECRET`: een lange willekeurige tekst
+3. **Redeploy** (Deployments → ⋯ → Redeploy), zodat de variabelen actief worden.
+4. **Klok:** het gratis Vercel-plan draait de ingebouwde cron maar 1× per dag (09:00 zomer / 08:00 winter).
+   Voor meldingen op jouw eigen tijden: maak een gratis job op [cron-job.org](https://cron-job.org) die elke 5 minuten
+   `https://<jouw-app>.vercel.app/api/cron?key=<CRON_SECRET>` aanroept.
+5. Open de app vanaf je beginscherm → **Profiel → Meldingen** → zet aan → **Stuur testmelding**.
+
+Een melding wordt tot 90 minuten na het ingestelde tijdstip nog verstuurd en nooit twee keer per dag.
+Op de server staan alleen: je push-abonnement, tijdzone, tijden, naam en startdatum van je streak (voor "Dag 12 🔥").
+
 ## Structuur
 
 ```
@@ -46,7 +68,10 @@ js/audio.js           WebAudio-synth: UI-geluiden, oceaangeluid, binaurale tonen
 js/fx.js              GSAP-helpers: sheets, fullscreen, confetti, count-up, toast, haptiek
 js/tools.js           Lichttherapie, ademhaling, meditatie, noodmodus
 js/app.js             Onboarding, views, sheets, events
-sw.js                 Service worker voor offline gebruik
+sw.js                 Service worker: offline gebruik + pushmeldingen ontvangen
+js/push.js            Meldingen aan/uit, tijden, synchroniseren met de server
+api/                  Vercel Functions: vapid, subscribe, test, cron (+ _lib.js)
+vercel.json           Dagelijkse cron + headers
 ```
 
 ## Opmerkingen

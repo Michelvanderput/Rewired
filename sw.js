@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v3";
+const VERSION = "rewired-v4";
 const SHELL = [
   "./",
   "index.html",
@@ -8,6 +8,7 @@ const SHELL = [
   "js/store.js",
   "js/audio.js",
   "js/fx.js",
+  "js/push.js",
   "js/tools.js",
   "js/app.js",
   "manifest.webmanifest",
@@ -40,6 +41,7 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   const sameOrigin = url.origin === location.origin;
+  if (sameOrigin && url.pathname.startsWith("/api/")) return; // never cache the push API
 
   if (sameOrigin) {
     e.respondWith(
@@ -60,4 +62,38 @@ self.addEventListener("fetch", e => {
       }))
     );
   }
+});
+
+/* ---------- Push notifications ---------- */
+self.addEventListener("push", e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+  const title = data.title || "Rewired";
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "icons/icon-192.png",
+      badge: "icons/icon-192.png",
+      tag: data.tag || "rewired",
+      data: { url: data.url || "./" }
+    }),
+    self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null
+  ]));
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const target = new URL(e.notification.data && e.notification.data.url || "./", self.registration.scope).href;
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      const open = new URL(target).searchParams.get("open");
+      for (const c of list) {
+        if (c.url.startsWith(self.registration.scope)) {
+          c.postMessage({ type: "open", open });
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
 });

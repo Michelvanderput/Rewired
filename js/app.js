@@ -45,6 +45,7 @@
           <h1>${greet}${s.name ? ", " + esc(s.name) : ""}</h1>
         </div>
       </header>
+      ${Push.homeCardHtml()}
 
       <div class="card hero" data-anim>
         <div class="orb-wrap">
@@ -288,6 +289,9 @@
         <p class="small muted" style="margin-top:6px">Open in Safari, tik op <b style="color:#fff">Deel</b> <span style="display:inline-block;vertical-align:-3px">⬆️</span> en kies <b style="color:#fff">Zet op beginscherm</b>. Dan werkt Rewired als een echte app, fullscreen en offline.</p>
       </div>` : ""}
 
+      <div class="section-title" data-anim><h3>Meldingen</h3></div>
+      <div data-push data-anim></div>
+
       <div class="section-title" data-anim><h3>Waarom ik dit doe</h3><button class="link" data-action="editReasons">Wijzig</button></div>
       <div class="card" data-anim>
         ${s.reasons.length ? s.reasons.map(r => `<div class="row" style="padding:6px 0"><span>💡</span><span>${esc(r)}</span></div>`).join("") : `<div class="empty">Voeg je redenen toe. Je ziet ze terug in de noodmodus.</div>`}
@@ -338,6 +342,8 @@
     $$("[data-w]", v).forEach(el => gsap.to(el, { width: el.dataset.w + "%", duration: animate ? 1.2 : 0, ease: "power3.out", delay: animate ? 0.3 : 0 }));
     $$("[data-grow]", v).forEach((el, i) => gsap.from(el, { scaleY: 0, transformOrigin: "50% 100%", duration: 0.8, delay: 0.3 + i * 0.02, ease: "power3.out" }));
     $$("[data-cal]", v).forEach((el, i) => animate && gsap.from(el, { scale: 0, opacity: 0, duration: 0.4, delay: 0.2 + i * 0.012, ease: "back.out(2)" }));
+
+    if (tab === "profile") Push.mount($("[data-push]", v));
 
     if (tab === "home") {
       const ring = $("[data-ring]", v);
@@ -917,7 +923,10 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: habitsSheet,
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet
+    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet,
+    pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
+      .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
+    pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
   };
 
   function bindEvents() {
@@ -973,7 +982,11 @@
     });
 
     // re-sync on return from background
-    document.addEventListener("visibilitychange", () => { if (!document.hidden && tab === "home") render(false); });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) return;
+      if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+      if (tab === "home") render(false);
+    });
     window.addEventListener("resize", () => moveIndicator(true));
   }
 
@@ -991,6 +1004,21 @@
     gsap.to(".panic-ring", { scale: 1.35, opacity: 0, duration: 1.8, repeat: -1, ease: "power2.out" });
     startTicker();
     setTimeout(checkMilestone, 1200);
+    Push.ensure();
+    const open = new URLSearchParams(location.search).get("open");
+    if (open) { history.replaceState(null, "", location.pathname); setTimeout(() => openFromNotification(open), 900); }
+  }
+
+  /* Open a screen requested by a notification tap (?open=… or a message from the service worker) */
+  function openFromNotification(what) {
+    if (!what || !Store.s.onboarded) return;
+    if ($("#fs-root").children.length) return;
+    if (tab !== "home") switchTab("home");
+    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker }[what];
+    if (run) setTimeout(run, 500);
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromNotification(e.data.open); });
   }
 
   window.App = { refresh, relapseSheet };
