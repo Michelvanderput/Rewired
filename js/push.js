@@ -112,7 +112,7 @@
     const reg = await registration();
     const sub = await reg.pushManager.getSubscription();
     if (!sub) throw new Error("not subscribed");
-    const r = await fetch("/api/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+    const r = await fetch("/api/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint, delay: 5 }) });
     if (r.status === 404 || r.status === 410) { await sync(); throw new Error("resubscribe"); }
     if (!r.ok) throw new Error("server");
   }
@@ -211,8 +211,9 @@
       }
       if (e.target.closest("[data-push-test]")) {
         const b = e.target.closest("[data-push-test]");
-        b.disabled = true; b.textContent = "Versturen…";
-        try { await sync(); await test(); toast("Testmelding verstuurd"); }
+        b.disabled = true; b.textContent = "Ga nu naar je beginscherm…";
+        toast("Melding komt over 5 sec, ga naar je beginscherm 📲");
+        try { await sync(); await test(); }
         catch (err) { toast(err.message === "resubscribe" ? "Opnieuw verbonden, probeer nog eens" : "Versturen mislukt"); }
         b.disabled = false; b.textContent = "Stuur testmelding";
       }

@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v5";
+const VERSION = "rewired-v6";
 const SHELL = [
   "./",
   "index.html",
@@ -71,6 +71,7 @@ self.addEventListener("push", e => {
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
   const title = data.title || "Rewired";
   e.waitUntil(Promise.all([
+    self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage({ type: "push", title, body: data.body || "" }))),
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "icons/icon-192.png",

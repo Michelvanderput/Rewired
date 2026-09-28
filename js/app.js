@@ -1031,7 +1031,11 @@
     if (run) setTimeout(run, 500);
   }
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromNotification(e.data.open); });
+    navigator.serviceWorker.addEventListener("message", e => {
+      if (!e.data) return;
+      if (e.data.type === "open") openFromNotification(e.data.open);
+      if (e.data.type === "push" && !document.hidden) { toast("🔔 " + e.data.title + (e.data.body ? " · " + e.data.body : "")); haptic([20, 40, 20]); }
+    });
   }
 
   window.App = { refresh, relapseSheet };
