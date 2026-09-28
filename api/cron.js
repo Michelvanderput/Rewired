@@ -1,7 +1,7 @@
 /* GET /api/cron → send every reminder that is due.
    Call it every 5–15 minutes (cron-job.org) and/or via the daily Vercel cron.
    Auth: "Authorization: Bearer <CRON_SECRET>" (Vercel cron sends this) or ?key=<CRON_SECRET>. */
-const { config, json, allSubs, saveSub, deleteSubKey, localNow, toMin, message, send } = require("./_lib");
+const { redis, config, json, allSubs, saveSub, deleteSubKey, localNow, toMin, message, send } = require("./_lib");
 
 // A reminder is still sent when the cron runs up to this many minutes late
 const WINDOW = 90;
@@ -32,6 +32,13 @@ module.exports = async (req, res) => {
 
   const now = new Date();
 
+  // Status (?status=1): when did the cron last run, what is scheduled — sends nothing
+  if (new URL(req.url, "http://x").searchParams.get("status") === "1") {
+    const last = await redis("GET", "cron:last");
+    const subs = (await allSubs()).filter(x => x.rec).map(({ rec }) => ({ tz: rec.tz, now: localNow(rec.tz, now), reminders: rec.reminders, lastSent: rec.lastSent }));
+    return json(res, 200, { lastRun: last ? new Date(+last).toISOString() : null, minutesAgo: last ? Math.round((now - last) / 60000) : null, subs });
+  }
+
   // Diagnostics (?test=1): send a test to every subscription and report what the push service answers
   if (new URL(req.url, "http://x").searchParams.get("test") === "1") {
     const out = [];
@@ -48,6 +55,7 @@ module.exports = async (req, res) => {
     return json(res, 200, { subject: process.env.VAPID_SUBJECT || "(niet ingesteld)", results: out });
   }
 
+  await redis("SET", "cron:last", String(now.getTime()));
   const report = { subs: 0, sent: 0, removed: 0, errors: 0 };
   for (const { key: k, rec } of await allSubs()) {
     if (!rec) { await deleteSubKey(k); continue; }
