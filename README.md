@@ -9,7 +9,7 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Origineel (App Store) | In deze app |
 | --- | --- |
 | Streak Tracker | Live teller (dagen + uu:mm:ss), voortgangsring naar de volgende mijlpaal, **brein herbedraad %** (90 dagen) |
-| Habit Tracker | Eigen gewoontes met emoji, dagelijkse check-off, weekgrid en reeksen |
+| Habit Tracker | 5 soorten: **tellen** (water in ml, push-ups…), **timer** (mediteren, lezen, met stopwatch), **limiet** (schermtijd, koffie), **tijdstip** (opstaan/naar bed) en **afvinken**. 30 kant-en-klare gewoontes, snelknoppen, 7-dagen-grafiek, reeksen en koppeling met de Dopamine Reset |
 | Light Therapy (NeuroPulse) | 5 modi: Pattern Interrupt, Rood licht, Focus blauw, Bilateraal (EMDR-stijl), Aurora. Optionele binaurale toon, scherm blijft aan |
 | Meditative Practices | Urge surfing, Body scan, Rust in je hoofd, Stille timer, met gegenereerd oceaangeluid en geanimeerde orb |
 | Daily Dopamine Reset | 8 dagelijkse taken (koude douche, ochtendlicht, beweging, ...) met voortgangsbalk en confetti |
@@ -77,6 +77,7 @@ js/data.js            Content: mijlpalen, lessen, quotes, lichtmodi, ademhalings
 js/store.js           State in localStorage + berekeningen (streak, discipline score)
 js/audio.js           WebAudio-synth: UI-geluiden, oceaangeluid, binaurale tonen (geen audiobestanden)
 js/fx.js              GSAP-helpers: sheets, fullscreen, confetti, count-up, toast, haptiek
+js/habits.js          Gewoontes: soorten, templates, timers, detail- en beheerschermen
 js/tools.js           Lichttherapie, ademhaling, meditatie, noodmodus
 js/app.js             Onboarding, views, sheets, events
 sw.js                 Service worker: offline gebruik + pushmeldingen ontvangen

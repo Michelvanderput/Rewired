@@ -69,6 +69,8 @@
     };
     ["relapses", "urges", "journal"].forEach(byTs);
     ["checkins", "reset", "habitLog"].forEach(k => { out[k] = Object.assign({}, older[k] || {}, newer[k] || {}); });
+    out.habitVal = Object.assign({}, older.habitVal || {});
+    Object.entries(newer.habitVal || {}).forEach(([d, m]) => { out.habitVal[d] = Object.assign({}, out.habitVal[d] || {}, m); });
     ["lessonsDone", "celebrated"].forEach(k => { out[k] = [...new Set([...(older[k] || []), ...(newer[k] || [])])]; });
     out.bestStreak = Math.max(local.bestStreak || 0, remote.bestStreak || 0);
     out.firstStart = Math.min(local.firstStart || Infinity, remote.firstStart || Infinity, local.startDate, remote.startDate);

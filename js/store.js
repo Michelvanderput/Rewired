@@ -19,7 +19,9 @@
     checkins: {},        // {"YYYY-MM-DD": {mood, energy, note}}
     reset: {},           // {"YYYY-MM-DD": [taskId]}
     habits: DATA.defaultHabits.slice(),
-    habitLog: {},        // {"YYYY-MM-DD": [habitId]}
+    habitLog: {},        // {"YYYY-MM-DD": [habitId]}  (completed habits)
+    habitVal: {},        // {"YYYY-MM-DD": {habitId: value}} (counts, minutes, time of day)
+    habitTimer: {},      // {habitId: {start, day}} running timers
     journal: [],         // [{ts, text, mood}]
     lessonsDone: [],
     sessions: { light: 0, breath: 0, meditate: 0, panic: 0, minutes: 0 },
@@ -104,7 +106,8 @@
       for (let i = 0; i < 7; i++) {
         const k = dayKey(Date.now() - i * DAY);
         const r = (state.reset[k] || []).length / DATA.resetTasks.length;
-        const h = state.habits.length ? (state.habitLog[k] || []).length / state.habits.length : 0;
+        const done = window.Habits ? Habits.doneCount(k) : (state.habitLog[k] || []).length;
+        const h = state.habits.length ? done / state.habits.length : 0;
         const c = state.checkins[k] ? 1 : 0;
         active += Math.min(1, r * 0.5 + h * 0.3 + c * 0.2);
       }

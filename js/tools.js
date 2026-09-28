@@ -7,6 +7,7 @@
     s[kind] = (s[kind] || 0) + 1;
     s.minutes = (s.minutes || 0) + Math.round(seconds / 60);
     Store.save();
+    if (window.Habits) Habits.onSession(kind, seconds);
   }
 
   function segHtml(name, opts, val) {

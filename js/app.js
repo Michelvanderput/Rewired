@@ -32,7 +32,6 @@
     const toNext = next.d * DAY - Store.streakMs();
     const ringPct = Math.min(1, (Store.streakMs() - prev * DAY) / ((next.d - prev) * DAY));
     const doneReset = s.reset[Store.dayKey()] || [];
-    const doneHabits = s.habitLog[Store.dayKey()] || [];
     const q = todayQuote();
     const hour = new Date().getHours();
     const greet = hour < 6 ? "Goedenacht" : hour < 12 ? "Goedemorgen" : hour < 18 ? "Goedemiddag" : "Goedenavond";
@@ -93,14 +92,9 @@
           </button>`).join("")}
       </div>
 
-      <div class="section-title" data-anim><h3>Gewoontes vandaag</h3><button class="link" data-action="habits">Beheren</button></div>
+      <div class="section-title" data-anim><h3>Gewoontes vandaag</h3><span><button class="link" data-action="addHabit" style="margin-right:14px">＋ Nieuw</button><button class="link" data-action="habits">Beheren</button></span></div>
       <div class="card flush" data-anim>
-        ${s.habits.length ? s.habits.map(h => `
-          <button class="list-item ${doneHabits.includes(h.id) ? "done" : ""}" data-toggle-habit="${h.id}" style="width:100%;text-align:left">
-            <span class="li-ico">${esc(h.e)}</span>
-            <span class="li-body"><div class="li-title">${esc(h.t)}</div><div class="li-sub">${dagen(habitStreak(h.id))} op rij</div></span>
-            <span class="check">${checkIcon}</span>
-          </button>`).join("") : `<div class="empty">Nog geen gewoontes. <button class="link" style="color:var(--accent2)" data-action="habits">Voeg er een toe</button></div>`}
+        ${Habits.listHtml()}
       </div>
 
       <div class="card" style="margin-top:26px" data-anim>
@@ -111,17 +105,6 @@
     `;
   }
 
-  const dagen = n => n + (n === 1 ? " dag" : " dagen");
-
-  function habitStreak(id) {
-    let n = 0;
-    for (let i = 0; i < 400; i++) {
-      const k = Store.dayKey(Date.now() - i * DAY);
-      if ((S().habitLog[k] || []).includes(id)) n++;
-      else if (i > 0) break;
-    }
-    return n;
-  }
 
   function viewTools() {
     const tile = (action, e, title, sub, color, glow, wide) => `
@@ -200,6 +183,9 @@
       <div class="card" data-anim>${chart}
         <div class="legend"><span><i style="background:#7c5cff"></i>Weerstaan</span><span><i style="background:rgba(255,77,109,.55)"></i>Totaal gelogd</span></div>
       </div>
+
+      <div class="section-title" data-anim><h3>Gewoontes · 7 dagen</h3><button class="link" data-action="habits">Beheren</button></div>
+      <div class="card" data-anim>${Habits.weekHtml()}</div>
 
       <div class="section-title" data-anim><h3>Triggers</h3></div>
       <div class="card" data-anim>
@@ -374,6 +360,7 @@
     }, 1000);
   }
 
+  let switchTl = null;
   function switchTab(next) {
     if (next === tab) { $("#view").scrollTo({ top: 0, behavior: "smooth" }); return; }
     const order = Object.keys(VIEWS);
@@ -382,23 +369,33 @@
     haptic(); Sound.tap();
     moveIndicator();
     const v = $("#view");
-    gsap.to(v, {
-      opacity: 0, x: -24 * dir, duration: 0.18, ease: "power2.in", onComplete: () => {
+    // fast taps: finish the running switch immediately instead of stacking tweens
+    if (switchTl) switchTl.kill();
+    switchTl = gsap.timeline()
+      .to(v, { opacity: 0, x: -10 * dir, duration: 0.12, ease: "power1.in" })
+      .add(() => {
         v.scrollTop = 0;
         setView(v, VIEWS[tab]());
-        gsap.fromTo(v, { opacity: 0, x: 24 * dir }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out", clearProps: "transform" });
         afterRender(v, true);
-      }
-    });
+      })
+      .fromTo(v, { opacity: 0, x: 14 * dir }, { opacity: 1, x: 0, duration: 0.32, ease: "power3.out", clearProps: "transform" });
   }
 
+  let indTl = null;
   function moveIndicator(instant) {
     const bar = $("#tabbar"), act = $(`.tab[data-tab="${tab}"]`), ind = $(".tab-indicator");
     $$(".tab").forEach(t => t.classList.toggle("active", t === act));
     const r = act.getBoundingClientRect(), br = bar.getBoundingClientRect();
     const x = r.left - br.left + r.width / 2 - 30;
-    gsap.to(ind, { x, duration: instant ? 0 : 0.55, ease: "elastic.out(1,0.75)" });
-    if (!instant) gsap.fromTo(act.querySelector("svg"), { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: 1, ease: "power2.out" });
+    if (indTl) indTl.kill();
+    if (instant) { gsap.set(ind, { x, scaleX: 1 }); return; }
+    const dist = Math.abs(x - gsap.getProperty(ind, "x"));
+    // liquid pill: stretches while travelling, settles on arrival
+    indTl = gsap.timeline()
+      .to(ind, { x, duration: 0.42, ease: "power3.inOut" }, 0)
+      .to(ind, { scaleX: 1 + Math.min(dist / 180, 0.6), duration: 0.18, ease: "power2.out" }, 0)
+      .to(ind, { scaleX: 1, duration: 0.3, ease: "power2.inOut" }, 0.16);
+    gsap.fromTo(act.querySelector("svg"), { scale: 0.82 }, { scale: 1, duration: 0.45, ease: "back.out(3)", overwrite: true });
   }
 
   /* ====================================================== */
@@ -559,59 +556,11 @@
         $("[data-save]", sh).addEventListener("click", () => {
           const text = ta.value.trim();
           if (!text) { gsap.fromTo(ta, { x: -8 }, { x: 0, duration: 0.5, ease: "elastic.out(1,0.3)" }); return; }
-          S().journal.push({ ts: Date.now(), text, mood }); Store.save();
+          S().journal.push({ ts: Date.now(), text, mood });
+          const rl = S().reset[Store.dayKey()] || (S().reset[Store.dayKey()] = []);
+          if (!rl.includes("journal")) rl.push("journal");
+          Store.save();
           close(); Sound.success(); toast("Opgeslagen in je dagboek ✍️"); refresh();
-        });
-      }
-    });
-  }
-
-  function habitsSheet() {
-    const draw = () => {
-      const s = S();
-      const days = [];
-      for (let i = 6; i >= 0; i--) { const d = new Date(Date.now() - i * DAY); days.push({ k: Store.dayKey(d), l: ["Z", "M", "D", "W", "D", "V", "Z"][d.getDay()], today: i === 0 }); }
-      return s.habits.map(h => `
-        <div class="card" style="padding:14px" data-h="${h.id}">
-          <div class="row between"><div class="row" style="gap:10px"><span style="font-size:22px">${esc(h.e)}</span><div><div style="font-weight:600">${esc(h.t)}</div><div class="small muted">${dagen(habitStreak(h.id))} op rij</div></div></div>
-          <button class="small muted" data-del="${h.id}" style="padding:6px">Verwijder</button></div>
-          <div class="week">${days.map(d => `<button data-day="${d.k}" data-hid="${h.id}" class="${(s.habitLog[d.k] || []).includes(h.id) ? "on" : ""} ${d.today ? "today" : ""}">${d.l}</button>`).join("")}</div>
-        </div>`).join("") || `<div class="empty">Nog geen gewoontes.</div>`;
-    };
-    sheet(`
-      <h2>Gewoontes</h2>
-      <p class="sub">Vervang het oude patroon met nieuwe gewoontes. Tik op een dag om af te vinken.</p>
-      <div data-list>${draw()}</div>
-      <label class="lbl">Nieuwe gewoonte</label>
-      <div class="row"><input class="field" data-emoji maxlength="2" style="width:64px;text-align:center" value="⭐"><input class="field" data-name placeholder="Bijv. 10 min lezen"></div>
-      <div style="margin-top:12px"><button class="btn" data-add>Toevoegen</button></div>`, {
-      onMount(sh) {
-        const list = $("[data-list]", sh);
-        list.addEventListener("click", e => {
-          const d = e.target.closest("[data-day]");
-          if (d) {
-            const on = Store.toggleIn("habitLog", d.dataset.hid, d.dataset.day);
-            d.classList.toggle("on", on); haptic(); Sound.toggle(on);
-            gsap.fromTo(d, { scale: 0.8 }, { scale: 1, duration: 0.5, ease: "back.out(3)" });
-            const sub = d.closest(".card").querySelector(".small.muted"); sub.textContent = dagen(habitStreak(d.dataset.hid)) + " op rij";
-            refresh(false);
-            return;
-          }
-          const del = e.target.closest("[data-del]");
-          if (del) {
-            const card = del.closest(".card");
-            gsap.to(card, { height: 0, opacity: 0, padding: 0, marginTop: 0, duration: 0.35, onComplete: () => {
-              S().habits = S().habits.filter(h => h.id !== del.dataset.del); Store.save(); list.innerHTML = draw(); refresh(false);
-            } });
-          }
-        });
-        $("[data-add]", sh).addEventListener("click", () => {
-          const name = $("[data-name]", sh).value.trim(); if (!name) return;
-          S().habits.push({ id: "h" + Date.now(), e: $("[data-emoji]", sh).value.trim() || "⭐", t: name }); Store.save();
-          $("[data-name]", sh).value = "";
-          list.innerHTML = draw(); haptic(); Sound.success();
-          gsap.from(list.lastElementChild, { y: 20, opacity: 0, duration: 0.5, ease: "back.out(2)" });
-          refresh(false);
         });
       }
     });
@@ -932,7 +881,7 @@
   /* ====================================================== */
 
   const ACTIONS = {
-    checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: habitsSheet,
+    checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
     panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet,
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
@@ -963,15 +912,9 @@
         if (on && n === total) { confetti(120); Sound.success(); toast("Dopamine Reset voltooid! ⚡"); }
         return;
       }
-      const h = e.target.closest("[data-toggle-habit]");
-      if (h) {
-        const id = h.dataset.toggleHabit;
-        const on = Store.toggleIn("habitLog", id);
-        h.classList.toggle("done", on); haptic(); Sound.toggle(on);
-        gsap.fromTo(h.querySelector(".check"), { scale: 0.6 }, { scale: 1, duration: 0.5, ease: "back.out(3)" });
-        h.querySelector(".li-sub").textContent = dagen(habitStreak(id)) + " op rij";
-        return;
-      }
+      if (Habits.handleClick(e, v)) return;
+      const oh = e.target.closest("[data-open-habit]");
+      if (oh) { haptic(); Sound.tap(); Habits.openHabit(oh.dataset.openHabit); return; }
       const l = e.target.closest("[data-lesson]");
       if (l) { haptic(); Sound.tap(); lessonSheet(l.dataset.lesson); return; }
 

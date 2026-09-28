@@ -48,9 +48,11 @@
     gsap.to(o, { v: to, duration, ease: "power3.out", onUpdate: () => { el.textContent = o.v.toFixed(decimals) + suffix; } });
   }
 
+  /* Animate only what is on screen; everything below the fold is simply shown (cheaper on the phone) */
   function staggerIn(root) {
-    const items = $$("[data-anim]", root);
-    gsap.fromTo(items, { y: 28, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: "power3.out", stagger: 0.05, clearProps: "transform" });
+    const limit = root.getBoundingClientRect().bottom;
+    const items = $$("[data-anim]", root).filter(el => el.getBoundingClientRect().top < limit);
+    gsap.fromTo(items, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", stagger: 0.035, clearProps: "transform,opacity" });
   }
 
   /* Bottom sheet */
