@@ -41,9 +41,10 @@ Lokaal testen: `python3 -m http.server 8080` en open `http://localhost:8080`.
 Meldingen werken op iPhone met **iOS 16.4+**, en alleen als de app op je beginscherm staat.
 De server bestaat uit Vercel Functions in `api/` en gebruikt gratis Upstash Redis om je abonnement te bewaren.
 
-1. **Opslag:** Vercel → je project → **Storage** → **Create** → **Upstash for Redis** (gratis) → koppel aan het project.
-   Vercel zet `KV_REST_API_URL` en `KV_REST_API_TOKEN` dan zelf klaar.
+1. **Opslag:** maak een gratis database op [console.upstash.com](https://console.upstash.com) (Redis, plan *Free*).
+   Via de Vercel Marketplace worden alleen betaalde plannen getoond, dus maak hem direct bij Upstash aan.
 2. **Sleutels:** Vercel → **Settings → Environment Variables**, voeg toe:
+   - `UPSTASH_REDIS_REST_URL` en `UPSTASH_REDIS_REST_TOKEN`: uit Upstash → je database → REST API
    - `VAPID_PUBLIC_KEY` en `VAPID_PRIVATE_KEY`: maak ze met `npx web-push generate-vapid-keys`
    - `VAPID_SUBJECT`: `mailto:jouw@email.nl`
    - `CRON_SECRET`: een lange willekeurige tekst
