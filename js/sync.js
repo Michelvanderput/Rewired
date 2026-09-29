@@ -67,7 +67,9 @@
       [...(older[key] || []), ...(newer[key] || [])].forEach(x => m.set(String(x.ts), x));
       out[key] = [...m.values()].sort((a, b) => a.ts - b.ts);
     };
-    ["relapses", "urges", "journal"].forEach(byTs);
+    ["relapses", "urges", "journal", "sessionLog"].forEach(byTs);
+    out.recoveryDone = Object.assign({}, older.recoveryDone || {}, newer.recoveryDone || {});
+    out.rewardSeen = [...new Set([...(older.rewardSeen || []), ...(newer.rewardSeen || [])])];
     ["checkins", "reset", "habitLog"].forEach(k => { out[k] = Object.assign({}, older[k] || {}, newer[k] || {}); });
     out.habitVal = Object.assign({}, older.habitVal || {});
     Object.entries(newer.habitVal || {}).forEach(([d, m]) => { out.habitVal[d] = Object.assign({}, out.habitVal[d] || {}, m); });

@@ -120,6 +120,16 @@
     const notes = s.journal.filter(j => j.ts >= start && j.ts < end).length;
     if (notes) good.push({ e: "📝", t: `${notes} dagboek${notes === 1 ? "notitie" : "notities"}`, short: "dagboek" });
 
+    // app usage from iOS Shortcuts
+    if (window.AppTrack) { const a = AppTrack.recapItems(day); good.push(...a.good); bad.push(...a.bad); tips.push(...a.tips); }
+
+    // recovery day
+    const lastRel = s.relapses[s.relapses.length - 1];
+    if (lastRel && Store.dayKey(lastRel.ts + DAY) === day && !relapses.length) {
+      const done = (s.recoveryDone || {})[lastRel.ts];
+      (done ? good : bad).push({ e: "🩹", t: done ? "Hersteldag voltooid" : "Hersteldag niet afgemaakt", short: "hersteldag" });
+    }
+
     // tips: relapse first, then the weakest habits, then routines
     misses.slice(0, 3).forEach(m => tips.push(TIPS[m.h.tpl] || TYPE_TIPS[m.h.type]));
     if (rDone <= 3) tips.push("Begin met de twee makkelijkste Reset-taken: ochtendlicht en een telefoonvrij eerste uur.");
@@ -137,7 +147,7 @@
 
     // focus for today
     let focus = "Herhaal gisteren. Consistentie wint van motivatie.";
-    if (relapses.length) focus = "Vandaag: telefoon om 23:00 uit de slaapkamer en bij drang direct de noodknop.";
+    if (relapses.length) focus = "Vandaag is je hersteldag: werk de 6 stappen op home af. Telefoon om 23:00 uit de slaapkamer.";
     else if (misses.length) {
       const h = misses[0].h, f = x => H.fmt(h, x);
       focus = h.type === "count" ? `Vandaag: haal vóór 12:00 al de helft van ${h.t.toLowerCase()} (${f(h.target / 2)}).`

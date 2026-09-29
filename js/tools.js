@@ -6,6 +6,9 @@
     const s = Store.s.sessions;
     s[kind] = (s[kind] || 0) + 1;
     s.minutes = (s.minutes || 0) + Math.round(seconds / 60);
+    const log = Store.s.sessionLog || (Store.s.sessionLog = []);
+    log.push({ ts: Date.now(), kind, sec: Math.round(seconds) });
+    if (log.length > 300) log.splice(0, log.length - 300);
     Store.save();
     if (window.Habits) Habits.onSession(kind, seconds);
   }

@@ -45,6 +45,7 @@
         </div>
       </header>
       ${Push.homeCardHtml()}
+      ${Rewards.recoveryCardHtml()}
 
       <div class="card hero" data-anim>
         <div class="orb-wrap">
@@ -74,6 +75,8 @@
       </div>
 
       ${Recap.cardHtml()}
+      ${Rewards.cardHtml()}
+      ${AppTrack.cardHtml()}
 
       <div class="section-title" data-anim><h3>Snelle acties</h3></div>
       <div class="qa" data-anim>
@@ -131,6 +134,8 @@
         ${tile("journal", "✍️", "Dagboek", "Reflecteer", "amber", "#fbbf24")}
         ${tile("urge", "📍", "Drang loggen", "Vind je patronen", "violet", "#7c5cff")}
         ${tile("blocker", "🚫", "Blocker", "Blokkeer sites op iPhone", "red", "#f43f5e")}
+        ${tile("apps", "📱", "App-gebruik", "Tel hoe vaak je apps opent", "cyan", "#22d3ee")}
+        ${tile("rewards", "🎁", "Beloningen", "Vrijspelen met clean dagen", "amber", "#fbbf24")}
       </div>
     `;
   }
@@ -188,6 +193,8 @@
 
       <div class="section-title" data-anim><h3>Gewoontes · 7 dagen</h3><button class="link" data-action="habits">Beheren</button></div>
       <div class="card" data-anim>${Habits.weekHtml()}</div>
+
+      ${AppTrack.configured() ? `<div class="section-title" data-anim><h3>App-gebruik</h3><button class="link" data-action="apps">Details</button></div>${AppTrack.cardHtml()}` : ""}
 
       <div class="section-title" data-anim><h3>Triggers</h3></div>
       <div class="card" data-anim>
@@ -335,6 +342,8 @@
     $$("[data-cal]", v).forEach((el, i) => animate && gsap.from(el, { scale: 0, opacity: 0, duration: 0.4, delay: 0.2 + i * 0.012, ease: "back.out(2)" }));
 
     if (tab === "profile") { Push.mount($("[data-push]", v)); Sync.mount($("[data-sync]", v)); }
+
+    if (tab === "home") setTimeout(() => { Rewards.checkRecovery() || Rewards.checkUnlock(); }, 700);
 
     if (tab === "home") {
       const ring = $("[data-ring]", v);
@@ -528,6 +537,7 @@
               <div class="streak-num" data-n style="font-size:110px">${old}</div>
               <h2 style="font-size:30px;margin-top:20px" data-t>Nieuw begin.</h2>
               <p class="muted" style="margin-top:12px;font-size:17px;max-width:320px" data-s>Je ${old} ${old === 1 ? "dag" : "dagen"} zijn niet verloren: je hebt bewezen dat je het kunt. Val zeven keer, sta acht keer op.</p>
+              <p style="margin-top:14px;font-size:15px;max-width:320px" data-s>🩹 Morgen is je <b>hersteldag</b>: 6 korte stappen om terug te veren. Je kunt vandaag al beginnen.</p>
             </div>
             <div class="fs-bottom" data-b><button class="btn" data-close>Ik begin opnieuw</button></div>`, {
             bg: "radial-gradient(circle at 50% 35%, #1b1450, #05050a 70%)",
@@ -895,7 +905,7 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(),
+    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
       .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
     pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
@@ -925,6 +935,14 @@
         return;
       }
       if (Habits.handleClick(e, v)) return;
+      const rv = e.target.closest("[data-recovery]");
+      if (rv) {
+        haptic(); Sound.tap();
+        const go = { journal: journalSheet, checkin: checkinSheet, breath: Tools.breathPicker, surf: () => Tools.meditationPicker("surf"),
+          reset: () => { const r = $("[data-reset-count]"); if (r) r.closest(".section-title").scrollIntoView({ behavior: "smooth" }); } }[rv.dataset.recovery];
+        if (go) go();
+        return;
+      }
       const oh = e.target.closest("[data-open-habit]");
       if (oh) { haptic(); Sound.tap(); Habits.openHabit(oh.dataset.openHabit); return; }
       const l = e.target.closest("[data-lesson]");
@@ -955,6 +973,7 @@
       if (Store.dayKey() !== lastKey) newDay();
       else if (tab === "home") render(false);
       setTimeout(() => Recap.maybeAuto(), 900);
+      AppTrack.pull().then(ch => { if (ch && !$("#sheet-root").children.length) render(false); });
     });
     window.addEventListener("resize", () => moveIndicator(true));
   }
@@ -974,6 +993,7 @@
     startTicker();
     setTimeout(checkMilestone, 1200);
     setTimeout(() => Recap.maybeAuto(), 2400);
+    AppTrack.pull(true).then(ch => { if (ch) render(false); });
     Push.ensure();
     Sync.sync();
     const open = new URLSearchParams(location.search).get("open");
