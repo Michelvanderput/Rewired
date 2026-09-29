@@ -555,5 +555,11 @@
     return changed;
   }
 
-  window.Habits = { rollover, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get };
+  /* Add to the value of a habit made from a template (e.g. lesson minutes → "Iets nieuws leren") */
+  function addToTpl(tpl, amount) {
+    const h = S().habits.find(x => x.tpl === tpl);
+    if (h && h.type !== "check") setVal(h, today(), val(h) + amount, { quiet: true });
+  }
+
+  window.Habits = { rollover, addToTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get };
 })();

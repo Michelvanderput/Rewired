@@ -241,25 +241,6 @@
     return `<div class="cal">${cells}</div>`;
   }
 
-  function viewLearn() {
-    const done = S().lessonsDone;
-    return `
-      <header class="page-head" data-anim><div><div class="eyebrow">Kennis is kracht</div><h1>Leren</h1></div></header>
-      <div class="card" data-anim>
-        <div class="row between"><div><div style="font-weight:600">Jouw leerpad</div><div class="small muted">${done.length} van ${DATA.lessons.length} lessen gelezen</div></div><div style="font-family:var(--display);font-size:26px;font-weight:700" class="grad-text">${Math.round((done.length / DATA.lessons.length) * 100)}%</div></div>
-        <div class="bar" style="margin-top:14px"><i data-w="${(done.length / DATA.lessons.length) * 100}"></i></div>
-      </div>
-      <div style="margin-top:12px">
-      ${DATA.lessons.map((l, i) => `
-        <button class="card tap" style="width:100%;text-align:left;display:flex;gap:14px;align-items:center" data-lesson="${l.id}" data-anim>
-          <span style="font-family:var(--display);font-size:28px;font-weight:700;width:36px;color:var(--dim)">${String(i + 1).padStart(2, "0")}</span>
-          <span style="flex:1"><div style="font-weight:600;font-size:16px">${l.t}</div><div class="row" style="gap:8px;margin-top:6px"><span class="pill ${done.includes(l.id) ? "done" : ""}">${done.includes(l.id) ? "✓ Gelezen" : l.cat}</span><span class="small muted">${l.min} min</span></div></span>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dim)"><path d="M9 6l6 6-6 6"/></svg>
-        </button>`).join("")}
-      </div>
-    `;
-  }
-
   function viewProfile() {
     const s = S();
     const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
@@ -316,7 +297,7 @@
     `;
   }
 
-  const VIEWS = { home: viewHome, tools: viewTools, progress: viewProgress, learn: viewLearn, profile: viewProfile };
+  const VIEWS = { home: viewHome, tools: viewTools, progress: viewProgress, learn: () => Learn.view(), profile: viewProfile };
 
   /* ====================================================== */
   /*                      RENDERING                         */
@@ -341,6 +322,7 @@
     $$("[data-grow]", v).forEach((el, i) => gsap.from(el, { scaleY: 0, transformOrigin: "50% 100%", duration: 0.8, delay: 0.3 + i * 0.02, ease: "power3.out" }));
     $$("[data-cal]", v).forEach((el, i) => animate && gsap.from(el, { scale: 0, opacity: 0, duration: 0.4, delay: 0.2 + i * 0.012, ease: "back.out(2)" }));
 
+    if (tab === "learn") Learn.after(v);
     if (tab === "profile") { Push.mount($("[data-push]", v)); Sync.mount($("[data-sync]", v)); }
 
     if (tab === "home") setTimeout(() => { Rewards.checkRecovery() || Rewards.checkUnlock(); }, 700);
@@ -934,6 +916,7 @@
         if (on && n === total) { confetti(120); Sound.success(); toast("Dopamine Reset voltooid! ⚡"); }
         return;
       }
+      if (tab === "learn" && Learn.handleClick(e, v)) return;
       if (Habits.handleClick(e, v)) return;
       const rv = e.target.closest("[data-recovery]");
       if (rv) {

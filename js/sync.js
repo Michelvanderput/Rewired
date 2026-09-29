@@ -68,6 +68,9 @@
       out[key] = [...m.values()].sort((a, b) => a.ts - b.ts);
     };
     ["relapses", "urges", "journal", "sessionLog"].forEach(byTs);
+    out.lessonSaved = [...new Set([...(older.lessonSaved || []), ...(newer.lessonSaved || [])])];
+    out.quiz = Object.assign({}, older.quiz || {}, newer.quiz || {});
+    out.learnLog = Object.assign({}, older.learnLog || {}, newer.learnLog || {});
     out.recoveryDone = Object.assign({}, older.recoveryDone || {}, newer.recoveryDone || {});
     out.rewardSeen = [...new Set([...(older.rewardSeen || []), ...(newer.rewardSeen || [])])];
     ["checkins", "reset", "habitLog"].forEach(k => { out[k] = Object.assign({}, older[k] || {}, newer[k] || {}); });

@@ -17,7 +17,9 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Analytics | Kalender-heatmap, drang-grafiek (14 dagen), trigger-analyse, risicomomenten per dagdeel, terugvalgeschiedenis |
 | Ademhaling | Box breathing, 4-7-8, fysiologische zucht, coherent ademen, met toon en haptiek |
 | Discipline score | Score 0–100 op basis van streak, dagelijkse acties en weerstane drang |
-| Lessen | 10 korte lessen over dopamine, neuroplasticiteit, HALT, urge surfing, omgeving, terugval |
+| Leren | **54 lessen** in 8 categorieën (wetenschap, technieken, mindset, lichaam, relaties, omgeving, herstel, motivatie), elk met kernpunt, 'probeer vandaag'-opdracht en quiz. 7 leerpaden, les van de dag, 40 dagelijkse boosts, zoeken, filters en bewaren |
+| Beloningen & hersteldag | Beloningen die vrijkomen na X clean dagen (gaan op slot bij terugval) en een hersteldag met 6 stappen na een terugval |
+| App-gebruik (iOS Opdrachten) | Automatisering telt hoe vaak je apps opent, geeft direct een melding met je telling en limiet, met realisatie-overzicht en weekgrafiek |
 | Internet Blocker | Stapsgewijze handleiding voor de iOS Schermtijd-contentfilter |
 | Onboarding | Vragenlijst, triggers, redenen, startmoment, getekende belofte (handtekening) en persoonlijk 90-dagenplan |
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
@@ -82,12 +84,16 @@ js/audio.js           WebAudio-synth: UI-geluiden, oceaangeluid, binaurale tonen
 js/fx.js              GSAP-helpers: sheets, fullscreen, confetti, count-up, toast, haptiek
 js/habits.js          Gewoontes: soorten, templates, timers, detail- en beheerschermen
 js/recap.js           Ochtend-recap: score, goed/kan beter, tips en focus voor vandaag
+js/rewards.js         Beloningen vrijspelen + hersteldag na een terugval
+js/apptrack.js        App-gebruik via iOS Opdrachten: tellingen, limieten, realisatie
+js/lessons*.js        Lesinhoud (54 lessen), leerpaden en boosts
+js/learn.js           Leren-tab: les van de dag, paden, zoeken, lezer met quiz
 js/tools.js           Lichttherapie, ademhaling, meditatie, noodmodus
 js/app.js             Onboarding, views, sheets, events
 sw.js                 Service worker: offline gebruik + pushmeldingen ontvangen
 js/push.js            Meldingen aan/uit, tijden, synchroniseren met de server
 js/sync.js            Account, end-to-end versleuteling, cloud-sync en samenvoegen
-api/                  Vercel Functions: auth, data, vapid, subscribe, test, cron (+ _lib.js)
+api/                  Vercel Functions: auth, data, track, vapid, subscribe, test, cron (+ _lib.js)
 vercel.json           Dagelijkse cron + headers
 ```
 
