@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     }
     if (req.method !== "POST") return json(res, 405, { error: "method" });
 
-    const { subscription, tz, reminders, startDate, name } = body;
+    const { subscription, tz, reminders, startDate, name, recaps } = body;
     if (!validSubscription(subscription)) return json(res, 400, { error: "invalid subscription" });
     if (!validTz(tz)) return json(res, 400, { error: "invalid tz" });
 
@@ -38,6 +38,8 @@ module.exports = async (req, res) => {
       reminders: clean,
       startDate: Number.isFinite(startDate) && startDate > 0 && startDate <= Date.now() ? startDate : null,
       name: typeof name === "string" ? name.slice(0, 40) : "",
+      recaps: Array.isArray(recaps) ? recaps.slice(0, 2).filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.day) && typeof r.title === "string" && typeof r.body === "string")
+        .map(r => ({ day: r.day, title: r.title.slice(0, 80), body: r.body.slice(0, 160) })) : [],
       lastSent: existing ? existing.lastSent || {} : {},
       updated: Date.now()
     });

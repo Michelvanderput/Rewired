@@ -101,6 +101,12 @@ function message(id, rec, now = Date.now()) {
   const seed = Math.floor(now / DAY);
 
   if (id === "morning") {
+    const yday = rec.tz ? localNow(rec.tz, new Date(now - DAY)).day : null;
+    const recap = (rec.recaps || []).find(r => r.day === yday);
+    if (recap) {
+      const milestone = days && MILESTONES[days] ? `🏆 ${MILESTONES[days]} vrij! · ` : "";
+      return { title: `☀️ ${milestone}${recap.title}`, body: `${recap.body} · Tik voor je recap en tips`, url: "./?open=recap", tag: "morning" };
+    }
     if (days && MILESTONES[days]) {
       return { title: `🏆 ${MILESTONES[days]} vrij!`, body: `Mijlpaal bereikt${name}. Je brein verandert echt. Open de app om het te vieren.`, url: "./?open=home", tag: "milestone" };
     }

@@ -4,7 +4,7 @@
   const KEY_CACHE = "rewired.vapid";
 
   const REMINDERS = [
-    { id: "morning", e: "🌅", t: "Ochtend", s: "Streak + Dopamine Reset", def: "08:00", on: true },
+    { id: "morning", e: "🌅", t: "Ochtend-recap", s: "Hoe ging gisteren + streak", def: "08:00", on: true },
     { id: "midday", e: "💡", t: "Middag", s: "Gedachte van de dag", def: "12:30", on: false },
     { id: "evening", e: "✍️", t: "Avond check-in", s: "Log je stemming", def: "21:00", on: true },
     { id: "night", e: "🌙", t: "Risicomoment", s: "Telefoon weg, naar bed", def: "23:00", on: true }
@@ -58,7 +58,9 @@
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Amsterdam",
       reminders: prefs().reminders,
       startDate: s.startDate,
-      name: s.name || ""
+      name: s.name || "",
+      // yesterday + today so the morning notification can summarise the day that just ended
+      recaps: window.Recap ? [Recap.summary(Recap.yesterday()), Recap.summary(Store.dayKey())].filter(Boolean) : []
     };
   }
 
@@ -75,7 +77,7 @@
   function scheduleSync() {
     const p = prefs();
     if (!p.subscribed) return;
-    const sig = JSON.stringify([Store.s.startDate, Store.s.name, p.reminders]);
+    const sig = JSON.stringify([Store.s.startDate, Store.s.name, p.reminders, window.Recap && Recap.summary(Store.dayKey())]);
     if (sig === lastSig) return;
     lastSig = sig;
     clearTimeout(syncTimer);
@@ -95,7 +97,7 @@
     const r = await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(sub)) });
     if (!r.ok) throw new Error("server");
     prefs().subscribed = true; Store.save();
-    lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders]);
+    lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, window.Recap && Recap.summary(Store.dayKey())]);
   }
 
   async function disable() {
@@ -131,7 +133,7 @@
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(k.key) });
       }
       await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(sub)) });
-      lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders]);
+      lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, window.Recap && Recap.summary(Store.dayKey())]);
     } catch (e) {}
   }
 

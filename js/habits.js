@@ -272,6 +272,7 @@
   /* ---------- live timers ---------- */
   let lastTick = 0;
   setInterval(() => {
+    rollover();
     const runningHabits = S().habits.filter(running);
     if (!runningHabits.length) return;
     runningHabits.forEach(h => {
@@ -531,6 +532,28 @@
   }
 
   migrate();
+  rollover();
 
-  window.Habits = { listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get };
+  /* Midnight: minutes before 00:00 belong to the old day, the timer continues on the new day.
+     If the app was closed for longer than a day, the timer is stopped at midnight. */
+  function rollover() {
+    const t = today();
+    let changed = false;
+    S().habits.forEach(h => {
+      const r = running(h);
+      if (!r || r.day === t) return;
+      const d = new Date(r.start); d.setHours(24, 0, 0, 0);
+      const midnight = d.getTime();
+      const map = S().habitVal[r.day] || (S().habitVal[r.day] = {});
+      map[h.id] = Math.round(((map[h.id] || 0) + Math.max(0, midnight - r.start) / 60000) * 100) / 100;
+      mirror(h, r.day);
+      if (Store.dayKey(midnight) === t) S().habitTimer[h.id] = { start: midnight, day: t };
+      else delete S().habitTimer[h.id];
+      changed = true;
+    });
+    if (changed) Store.save();
+    return changed;
+  }
+
+  window.Habits = { rollover, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get };
 })();

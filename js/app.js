@@ -73,6 +73,8 @@
         <div class="card stat" data-anim><div class="ico" style="${ICON_BG.amber}">🏆</div><div class="v" data-count="${Store.bestDays()}">0</div><div class="l">Beste streak</div></div>
       </div>
 
+      ${Recap.cardHtml()}
+
       <div class="section-title" data-anim><h3>Snelle acties</h3></div>
       <div class="qa" data-anim>
         <button data-action="checkin"><span class="qi" style="${checked ? ICON_BG.green : ICON_BG.violet}">${checked ? "✅" : "😊"}</span>Check-in</button>
@@ -347,11 +349,21 @@
     }
   }
 
+  /* 00:00 → habits, Dopamine Reset and check-in start fresh; running timers are split at midnight */
+  let lastKey = Store.dayKey();
+  function newDay() {
+    if (Store.dayKey() === lastKey) return;
+    lastKey = Store.dayKey();
+    Habits.rollover();
+    if (!$("#sheet-root").children.length) render(false);
+    setTimeout(() => Recap.maybeAuto(), 600);
+  }
+
   function startTicker() {
     clearInterval(ticker);
-    let lastDays = Store.streakDays(), lastKey = Store.dayKey();
+    let lastDays = Store.streakDays();
     ticker = setInterval(() => {
-      if (Store.dayKey() !== lastKey) { lastKey = Store.dayKey(); if (tab === "home" || tab === "progress") render(false); }
+      if (Store.dayKey() !== lastKey) newDay();
       if (tab !== "home") return;
       const t = $("[data-timer]");
       if (t) t.textContent = fmtDur(Store.streakMs());
@@ -883,7 +895,7 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet,
+    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(),
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
       .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
     pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
@@ -940,7 +952,9 @@
       Sync.sync();
       if (document.hidden) return;
       if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
-      if (tab === "home") render(false);
+      if (Store.dayKey() !== lastKey) newDay();
+      else if (tab === "home") render(false);
+      setTimeout(() => Recap.maybeAuto(), 900);
     });
     window.addEventListener("resize", () => moveIndicator(true));
   }
@@ -959,6 +973,7 @@
     gsap.to(".panic-ring", { scale: 1.35, opacity: 0, duration: 1.8, repeat: -1, ease: "power2.out" });
     startTicker();
     setTimeout(checkMilestone, 1200);
+    setTimeout(() => Recap.maybeAuto(), 2400);
     Push.ensure();
     Sync.sync();
     const open = new URLSearchParams(location.search).get("open");
@@ -970,7 +985,7 @@
     if (!what || !Store.s.onboarded) return;
     if ($("#fs-root").children.length) return;
     if (tab !== "home") switchTab("home");
-    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker }[what];
+    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker, recap: () => { S().recapSeen = null; Recap.show(); } }[what];
     if (run) setTimeout(run, 500);
   }
   if ("serviceWorker" in navigator) {

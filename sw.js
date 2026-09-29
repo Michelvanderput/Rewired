@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v7";
+const VERSION = "rewired-v8";
 const SHELL = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const SHELL = [
   "js/push.js",
   "js/sync.js",
   "js/habits.js",
+  "js/recap.js",
   "js/tools.js",
   "js/app.js",
   "manifest.webmanifest",

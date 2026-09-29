@@ -22,7 +22,8 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Onboarding | Vragenlijst, triggers, redenen, startmoment, getekende belofte (handtekening) en persoonlijk 90-dagenplan |
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
 | Account & cloud-opslag | Gebruikersnaam + wachtwoord, alles **end-to-end versleuteld** (AES-GCM) vóór het de telefoon verlaat, sync tussen apparaten met samenvoegen, herstellen op een nieuwe telefoon |
-| Pushmeldingen | Ochtend (streak + mijlpalen), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
+| Ochtend-recap | Elke ochtend (vanaf 04:00, eerste keer openen) een overzicht van gisteren: score, wat ging goed, wat kan beter, gerichte tips en een focus voor vandaag |
+| Pushmeldingen | Ochtend-recap (score + samenvatting), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
 
 Niet overgenomen, omdat daar een server met accounts voor nodig is: community-forum en AI-coach.
 
@@ -56,7 +57,9 @@ De server bestaat uit Vercel Functions in `api/` en gebruikt gratis Upstash Redi
 5. Open de app vanaf je beginscherm → **Profiel → Meldingen** → zet aan → **Stuur testmelding**.
 
 Een melding wordt tot 90 minuten na het ingestelde tijdstip nog verstuurd en nooit twee keer per dag.
-Op de server staan alleen: je push-abonnement, tijdzone, tijden, naam en startdatum van je streak (voor "Dag 12 🔥").
+Op de server staan alleen: je push-abonnement, tijdzone, tijden, naam, startdatum van je streak (voor "Dag 12 🔥") en een
+samenvatting van één regel voor de ochtendmelding (score + één gewoontenaam; geen dagboek, triggers of notities).
+Gewoontes, Dopamine Reset en check-in beginnen elke dag om 00:00 opnieuw; een lopende timer wordt om middernacht gesplitst.
 
 ## Account & versleuteling
 
@@ -78,6 +81,7 @@ js/store.js           State in localStorage + berekeningen (streak, discipline s
 js/audio.js           WebAudio-synth: UI-geluiden, oceaangeluid, binaurale tonen (geen audiobestanden)
 js/fx.js              GSAP-helpers: sheets, fullscreen, confetti, count-up, toast, haptiek
 js/habits.js          Gewoontes: soorten, templates, timers, detail- en beheerschermen
+js/recap.js           Ochtend-recap: score, goed/kan beter, tips en focus voor vandaag
 js/tools.js           Lichttherapie, ademhaling, meditatie, noodmodus
 js/app.js             Onboarding, views, sheets, events
 sw.js                 Service worker: offline gebruik + pushmeldingen ontvangen
