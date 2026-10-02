@@ -6,3 +6,6 @@ playwright.config.js
 vitest.config.mjs
 biome.json
 tsconfig.json
+docs/
+CLAUDE.md
+README.md

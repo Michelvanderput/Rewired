@@ -11,7 +11,7 @@ const user = z.string().max(64).transform(s => s.trim().toLowerCase()).refine(va
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /* ---------- /api/subscribe ---------- */
-const REMINDER_IDS = /** @type {const} */ (["morning", "midday", "evening", "night", "risk0", "risk1", "risk2"]);
+const REMINDER_IDS = /** @type {const} */ (["morning", "midday", "evening", "night", "weekly", "risk0", "risk1", "risk2", "n0", "n1", "n2", "n3"]);
 const reminder = z.object({ on: z.unknown(), time: z.string().refine(validTime) }).transform(r => ({ on: !!r.on, time: r.time }));
 
 const Subscribe = z.object({
@@ -32,6 +32,20 @@ const Subscribe = z.object({
   }),
   startDate: z.number().finite().positive().refine(n => n <= Date.now()).nullable().catch(null).optional().transform(v => v ?? null),
   name: z.string().transform(s => s.slice(0, 40)).catch("").optional().transform(v => v ?? ""),
+  // habit reminders per moment (n0..n3): per day the text to send, computed on the phone (today + tomorrow)
+  nudges: z.record(z.string(), z.unknown()).catch({}).optional().transform(n => {
+    /** @type {Record<string, Record<string, { title: string, body: string }>>} */
+    const out = {};
+    for (const id of ["n0", "n1", "n2", "n3"]) {
+      const days = n && n[id];
+      if (!days || typeof days !== "object") continue;
+      Object.entries(days).slice(0, 2).forEach(([d, v]) => {
+        const p = z.object({ title: z.string(), body: z.string() }).safeParse(v);
+        if (day.safeParse(d).success && p.success) (out[id] = out[id] || {})[d] = { title: p.data.title.slice(0, 80), body: p.data.body.slice(0, 160) };
+      });
+    }
+    return out;
+  }),
   // labels for the personal risk-moment reminders (risk0..risk2), computed on the phone from the urge log
   risks: z.array(z.unknown()).catch([]).optional().transform(list => (list || []).slice(0, 3).map(r => {
     const p = z.object({ label: z.string(), detail: z.string().catch(""), tip: z.string().catch("") }).safeParse(r);

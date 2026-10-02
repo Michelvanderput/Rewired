@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
     const p = Subscribe.safeParse(body);
     if (!p.success) return json(res, 400, { error: p.error.issues.some(i => i.path[0] === "subscription") ? "invalid subscription" : "invalid tz" });
-    const { subscription, tz, reminders, startDate, name, recaps, risks } = p.data;
+    const { subscription, tz, reminders, startDate, name, recaps, risks, nudges } = p.data;
 
     const existing = await getSub(subscription.endpoint);
     if (!existing && (await redis("SCARD", "subs")) >= MAX_SUBS) return json(res, 429, { error: "too many subscriptions" });
@@ -35,6 +35,7 @@ module.exports = async (req, res) => {
       name,
       recaps,
       risks,
+      nudges,
       lastSent: existing ? existing.lastSent || {} : {},
       updated: Date.now()
     });

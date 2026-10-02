@@ -94,7 +94,7 @@ const QUOTES = [
 ];
 const pick = (arr, seed) => arr[Math.abs(seed) % arr.length];
 
-function message(id, rec, now = Date.now()) {
+function message(id, rec, now = Date.now(), slotDay = null) {
   const days = rec.startDate ? Math.max(0, Math.floor((now - rec.startDate) / DAY)) : null;
   const dayTxt = days == null ? "" : days === 1 ? "1 dag" : `${days} dagen`;
   const name = rec.name ? `, ${rec.name}` : "";
@@ -119,6 +119,14 @@ function message(id, rec, now = Date.now()) {
       ], seed),
       url: "./?open=home", tag: "morning"
     };
+  }
+  if (/^n\d$/.test(id)) {
+    const days = (rec.nudges || {})[id] || {};
+    const n = days[slotDay || (rec.tz ? localNow(rec.tz, new Date(now)).day : "")] || Object.values(days)[0];
+    return { title: n ? n.title : "Tijd voor je gewoonte", body: n ? n.body : "Klein beginnen mag.", url: "./?open=home", tag: id };
+  }
+  if (id === "weekly") {
+    return { title: "🪞 Weekreflectie", body: `Hoe ging je week${name}? Drie vragen, twee minuten.`, url: "./?open=reflect", tag: "weekly" };
   }
   if (/^risk\d$/.test(id)) {
     const r = (rec.risks || [])[+id.slice(4)];

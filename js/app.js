@@ -46,6 +46,7 @@
       </header>
       ${Push.homeCardHtml()}
       ${Risk.homeCardHtml()}
+      ${Reflect.homeCardHtml()}
       ${Rewards.recoveryCardHtml()}
 
       <div class="card hero" data-anim>
@@ -102,6 +103,7 @@
       <div class="card flush" data-anim>
         ${Habits.listHtml()}
       </div>
+      ${Habits.autoCardHtml()}
 
       <div class="card" style="margin-top:26px" data-anim>
         <div class="eyebrow">Gedachte van de dag</div>
@@ -215,6 +217,9 @@
       <div class="badges">
         ${DATA.milestones.map(m => `<div class="card badge ${days >= m.d ? "got" : ""}" data-anim><div class="bi">${m.e}</div><div class="bt">${m.t}</div><div class="bs">${m.s}</div></div>`).join("")}
       </div>
+
+      <div class="section-title" data-anim><h3>Weekreflecties</h3><button class="link" data-action="reflect">${Reflect.doneThisWeek() ? "Bekijk" : "Invullen"}</button></div>
+      <div class="card" data-anim>${Reflect.progressHtml()}</div>
 
       <div class="section-title" data-anim><h3>Dagboek</h3><button class="link" data-action="journal">Nieuw</button></div>
       <div class="card flush" data-anim>
@@ -459,7 +464,7 @@
         $("[data-save]", sh).addEventListener("click", () => {
           if (!mood) { gsap.fromTo(".mood-row", { x: -8 }, { x: 0, duration: 0.5, ease: "elastic.out(1,0.3)" }); return; }
           Store.checkin({ mood, energy, note: $("[data-note]", sh).value.trim() });
-          close(); Sound.success(); haptic([10, 30, 10]); confetti(40);
+          close(); Sound.success(); haptic([10, 30, 10]);
           toast("Check-in opgeslagen ✅"); refresh();
         });
       }
@@ -506,8 +511,8 @@
           close();
           if (!resisted) { setTimeout(() => relapseSheet(trigger, note, { place, feeling }), 350); return; }
           if (!before && Risk.moments().length) setTimeout(() => toast("📍 Je risicomomenten zijn nu zichtbaar bij Voortgang"), 3200);
-          Sound.success(); haptic([10, 30, 10]); confetti(50);
-          toast("Drang weerstaan. Sterk! 🛡️"); refresh();
+          Sound.success(); haptic([10, 30, 10]);
+          toast("Drang weerstaan 🛡️ · de golf is voorbij gegaan"); refresh();
           if (intensity >= 7) setTimeout(() => toast("Tip: probeer nu Lichttherapie of Ademhaling"), 3000);
         });
       }
@@ -598,7 +603,7 @@
       <div style="margin-top:28px"><button class="btn ${done ? "ghost" : ""}" data-done>${done ? "✓ Gelezen" : "Markeer als gelezen"}</button></div>`, {
       onMount(sh, close) {
         $("[data-done]", sh).addEventListener("click", () => {
-          if (!done) { S().lessonsDone.push(id); Store.save(); Sound.success(); confetti(40); toast("Les voltooid 📚"); }
+          if (!done) { S().lessonsDone.push(id); Store.save(); Sound.success(); toast("Les voltooid 📚"); }
           close(); refresh(false);
         });
       }
@@ -906,7 +911,7 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
+    panic: Tools.panic, reflect: () => Reflect.open(), blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
       .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
     pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
@@ -923,6 +928,9 @@
     v.addEventListener("click", e => {
       const a = e.target.closest("[data-action]");
       if (a) { haptic(); Sound.tap(); ACTIONS[a.dataset.action] && ACTIONS[a.dataset.action](); return; }
+
+      const au = e.target.closest("[data-auto]");
+      if (au) { haptic(); Sound.tap(); Habits.autoSheet(au.dataset.auto); return; }
 
       const r = e.target.closest("[data-toggle-reset]");
       if (r) {
@@ -1008,7 +1016,7 @@
     if (!what || !Store.s.onboarded) return;
     if ($("#fs-root").children.length) return;
     if (tab !== "home") switchTab("home");
-    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker, recap: () => { S().recapSeen = null; Recap.show(); } }[what];
+    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker, reflect: () => Reflect.open(), recap: () => { S().recapSeen = null; Recap.show(); } }[what];
     if (run) setTimeout(run, 500);
   }
   if ("serviceWorker" in navigator) {

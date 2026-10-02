@@ -16,7 +16,11 @@ function due(rec, now) {
     const sentFor = (rec.lastSent || {})[id];
     // the "day" a reminder belongs to: if we are past midnight but inside the window of yesterday's slot
     const slotDay = min < t ? localNow(rec.tz, new Date(now.getTime() - late * 60000)).day : day;
-    if (late < WINDOW && sentFor !== slotDay) out.push({ id, slotDay });
+    if (late >= WINDOW || sentFor === slotDay) continue;
+    // habit reminders only on the days the phone asked for; the weekly reflection only on Sunday
+    if (/^n\d$/.test(id) && !((rec.nudges || {})[id] || {})[slotDay]) continue;
+    if (id === "weekly" && new Date(slotDay + "T12:00:00Z").getUTCDay() !== 0) continue;
+    out.push({ id, slotDay });
   }
   return out;
 }
@@ -78,7 +82,7 @@ async function run(now) {
     let gone = false;
     for (const { id, slotDay } of list) {
       try {
-        await send(rec, message(id, rec, now.getTime()));
+        await send(rec, message(id, rec, now.getTime(), slotDay));
         rec.lastSent[id] = slotDay;
         report.sent++;
       } catch (e) {

@@ -3,7 +3,7 @@
    Only the error type, a scrubbed message, the stack (script file names + line numbers), app version and
    browser are sent: never journal text, names, habits or anything else from Store. At most 5 per session. */
 (function () {
-  const VERSION = "rewired-v12";
+  const VERSION = "rewired-v13";
   let target = null, sent = 0;
   const on = () => !!(target && window.Store && Store.s.settings && Store.s.settings.errors === true);
 

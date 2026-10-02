@@ -6,9 +6,12 @@
    - every habit can have an if-then plan: moment (anchor), cue ("Na mijn koffie"), place and a minimum version
    - a day can be marked "minimaal" (the small version counts as showing up) or "overgeslagen" with a reason,
      stored in state.habitStatus[day][habitId] = { s: "min" | "skip", why }
-   - a weekly target (h.weekly, 1–7 days) and "nooit twee keer missen": one missed day never breaks the line */
+   - a weekly target (h.weekly, 1–7 days) and "nooit twee keer missen": one missed day never breaks the line
+   - every 14 days four automaticity questions (SRBAI, 1–7); a habit that scores ≥ 5.5 can "graduate" (h.graduated):
+     it moves to "Automatisch", gets no reminders or warnings and no longer counts as an active habit
+   - reminders fade: daily → every other day → only after a miss → off, as the automaticity score grows */
 (function () {
-  const { $, $$, esc, haptic, toast, confetti, sheet } = FX;
+  const { $, $$, esc, haptic, toast, sheet } = FX;
   const DAY = Store.DAY;
   const S = () => Store.s;
   const today = () => Store.dayKey();
@@ -190,7 +193,7 @@
   function missed(h, day) { return day >= createdDay(h) && day < today() && !shown(h, day) && !rested(h, day); }
   /* Daily habits: yesterday was missed and today isn't done yet → today matters ("nooit twee keer missen") */
   function atRisk(h) {
-    if (weekly(h) < 7 || h.type === "limit") return false;
+    if (weekly(h) < 7 || h.type === "limit" || h.graduated) return false;
     return missed(h, Store.dayKey(Date.now() - DAY)) && !shown(h);
   }
 
@@ -221,7 +224,8 @@
     if (isDone(h, day) && status(h, day)) setStatus(h, day, null);
     Store.save();
     const now = isDone(h, day);
-    if (!quiet && !was && now && h.type !== "limit") { Sound.success(); haptic([15, 40, 15]); confetti(50); toast(`${h.e} ${h.t}: doel gehaald!`); }
+    // informational feedback, no prizes: the habit itself is the point (see docs/ontwerp.md, overjustification)
+    if (!quiet && !was && now && h.type !== "limit") { Sound.success(); haptic([15, 40, 15]); toast(`${h.e} ${h.t}: ${h.type === "count" || h.type === "timer" ? fmt(h, val(h, day)) + " · " : ""}gedaan`); }
     if (!quiet && !wasOver && over(h, day)) { haptic([30, 60, 30]); toast(`${h.e} ${h.t}: limiet overschreden`); }
   }
   function toggleCheck(h, day = today()) {
@@ -329,6 +333,124 @@
     return "";
   }
 
+  /* ---------- automaticity (SRBAI) and graduation ---------- */
+  const SRBAI = [
+    "Ik doe het automatisch.",
+    "Ik doe het zonder er bewust aan te denken.",
+    "Ik doe het voordat ik doorheb dat ik ermee bezig ben.",
+    "Het zou raar voelen om het níet te doen."
+  ];
+  const AUTO_EVERY = 14 * DAY, AUTO_GRAD = 5.5, AUTO_MID = 3.5;
+  const active = () => S().habits.filter(h => !h.graduated);
+  const lastAuto = h => (h.srbai || [])[(h.srbai || []).length - 1] || null;
+  function autoDue(h, now = Date.now()) {
+    if (h.graduated || h.type === "limit") return false;
+    if (now - (h.created || 0) < AUTO_EVERY) return false;
+    if (h.autoSnooze && now < h.autoSnooze) return false;
+    const l = lastAuto(h);
+    return !l || now - l.ts >= AUTO_EVERY;
+  }
+  const nextAutoDue = () => active().find(h => autoDue(h)) || null;
+
+  /* Reminder level, fading with automaticity */
+  function reminderLevel(h) {
+    if (h.graduated) return { id: "off", t: "uit · gaat vanzelf" };
+    if (h.type === "limit" || h.type === "time" || plan(h).anchor === "any") return { id: "none", t: "geen · geen vast moment" };
+    const l = lastAuto(h);
+    if (l && l.score >= AUTO_GRAD) return { id: "aftermiss", t: "alleen na een gemiste dag" };
+    if (l && l.score >= AUTO_MID) return { id: "alternate", t: "om de dag" };
+    return { id: "daily", t: "elke dag" };
+  }
+  /* Should habit h get a nudge on day k (today or tomorrow)? */
+  function wantsNudge(h, k) {
+    const lvl = reminderLevel(h).id, t = today();
+    if (lvl === "off" || lvl === "none" || k < createdDay(h)) return false;
+    if (k === t && (shown(h, t) || status(h, t))) return false;
+    if (weekly(h) < 7 && weekDone(h) >= weekly(h) && monday(Date.parse(k + "T12:00:00")) === monday()) return false;
+    const prev = Store.dayKey(Date.parse(k + "T12:00:00") - DAY);
+    const missedPrev = prev === t ? !shown(h, t) : missed(h, prev);
+    if (lvl === "daily") return true;
+    if (lvl === "alternate") return Math.floor(Date.parse(k + "T12:00:00") / DAY) % 2 === 0 || missedPrev;
+    return missedPrev; // aftermiss
+  }
+  /* Per moment of the day: which habits to nudge today and tomorrow (sent to the push server) */
+  function nudges() {
+    const t = today(), tm = Store.dayKey(Date.now() + DAY), out = {};
+    ANCHORS.filter(a => a.id !== "any").forEach((a, i) => {
+      const days = {};
+      [t, tm].forEach(k => {
+        const list = active().filter(h => plan(h).anchor === a.id && wantsNudge(h, k));
+        if (!list.length) return;
+        const one = list[0], p = plan(one);
+        days[k] = list.length === 1
+          ? { title: `${a.e} ${p.cue ? p.cue.charAt(0).toUpperCase() + p.cue.slice(1) : a.t}: ${one.t.toLowerCase()}`, body: p.min ? `Klein beginnen mag: ${p.min}.` : "Even doen, dan staat het." }
+          : { title: `${a.e} ${a.t}: ${list.length} gewoontes`, body: list.map(h => h.e + " " + h.t + (plan(h).min ? " (min. " + plan(h).min + ")" : "")).join(" · ").slice(0, 150) };
+      });
+      if (Object.keys(days).length) out["n" + i] = days;
+    });
+    return out;
+  }
+
+  function autoSheet(id) {
+    const h = get(id) || nextAutoDue(); if (!h) return;
+    const ans = [0, 0, 0, 0];
+    const scale = i => `<div class="auto-scale" data-q="${i}">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-v="${n}">${n}</button>`).join("")}</div>`;
+    sheet(`
+      <div class="eyebrow">Automatisme-check · elke 14 dagen</div>
+      <h2>${esc(h.e)} ${esc(h.t)}</h2>
+      <p class="sub">Hoe vanzelfsprekend is deze gewoonte nu? 1 = helemaal niet mee eens, 7 = helemaal mee eens.</p>
+      ${SRBAI.map((q, i) => `<label class="lbl" style="text-transform:none;letter-spacing:0;font-size:15px;color:#fff">${q}</label>${scale(i)}`).join("")}
+      <div class="row between small muted" style="margin-top:6px"><span>niet mee eens</span><span>mee eens</span></div>
+      <div data-auto-out></div>
+      <div data-actions><div style="margin-top:22px"><button class="btn" data-save disabled>Opslaan</button></div>
+      <div style="margin-top:10px"><button class="btn ghost" data-later>Later</button></div></div>`, {
+      onClose() { if (window.App) App.refresh(false); },
+      onMount(sh, close) {
+        const save = $("[data-save]", sh);
+        sh.addEventListener("click", e => {
+          const b = e.target.closest(".auto-scale button");
+          if (b) {
+            const q = +b.closest("[data-q]").dataset.q; ans[q] = +b.dataset.v;
+            $$(`[data-q="${q}"] button`, sh).forEach(x => x.classList.toggle("on", x === b));
+            haptic(); Sound.tap(); save.disabled = ans.some(a => !a); return;
+          }
+          if (e.target.closest("[data-later]")) { h.autoSnooze = Date.now() + 2 * DAY; Store.save(); close(); return; }
+          if (e.target.closest("[data-grad]")) { h.graduated = Date.now(); Store.save(); Sound.success(); toast(`${h.e} ${h.t} staat nu bij Automatisch`); close(); return; }
+          if (e.target.closest("[data-keep]")) { close(); return; }
+          if (e.target.closest("[data-save]") && !save.disabled) {
+            const score = Math.round(ans.reduce((a, b) => a + b, 0) / 4 * 10) / 10;
+            (h.srbai = h.srbai || []).push({ ts: Date.now(), score });
+            delete h.autoSnooze; Store.save(); haptic([10, 20, 10]);
+            const lvl = reminderLevel(h);
+            $("[data-auto-out]", sh).innerHTML = `<div class="card" style="margin-top:18px">
+              <div class="eyebrow">Score ${String(score).replace(".", ",")} / 7</div>
+              <div style="font-weight:600;margin-top:6px">${score >= AUTO_GRAD ? "Dit gaat vanzelf. Klaar om af te studeren?" : score >= AUTO_MID ? "Het wordt een gewoonte. Herinneringen worden minder." : "Nog bewust werk. Dat is normaal in deze fase."}</div>
+              <p class="small muted" style="margin-top:6px">Herinneringen: ${lvl.t}. Gemiddeld duurt het ruim 2 maanden voor iets automatisch gaat, met grote verschillen per persoon.</p>
+              </div>`;
+            $("[data-actions]", sh).innerHTML = score >= AUTO_GRAD
+              ? `<div style="margin-top:18px"><button class="btn" data-grad>🎓 Ja, het gaat vanzelf</button></div><div style="margin-top:10px"><button class="btn ghost" data-keep>Nog even volgen</button></div>`
+              : `<div style="margin-top:18px"><button class="btn" data-keep>Sluiten</button></div>`;
+          }
+        });
+      }
+    });
+  }
+
+  function autoCardHtml() {
+    const h = nextAutoDue();
+    if (!h) return "";
+    return `<button class="card tap" data-auto="${h.id}" data-anim style="width:100%;text-align:left;display:flex;gap:12px;align-items:center;margin-top:12px">
+      <span style="font-size:24px">🧠</span><span style="flex:1;min-width:0"><div style="font-weight:600">Gaat ${esc(h.t.toLowerCase())} al vanzelf?</div><div class="small muted">4 korte vragen · bepaalt hoe vaak je herinnerd wordt</div></span><span class="muted">›</span></button>`;
+  }
+
+  /* Starting with 1–3 habits at a time works best; graduated ones don't count */
+  function tooManyHtml() {
+    const n = active().length;
+    if (n < 3) return "";
+    return `<div class="card" style="margin-bottom:12px;border-color:rgba(251,191,36,.45)"><div style="font-weight:600">⚖️ Je volgt al ${n} gewoontes</div>
+      <p class="small muted" style="margin-top:4px">Nieuwe gewoontes lukken het best met 1 tot 3 tegelijk. Overweeg te wachten tot een gewoonte automatisch gaat (zie de check elke 14 dagen) voor je er een bij neemt.</p></div>`;
+  }
+
   function rowHtml(h) {
     const done = isDone(h);
     return `<div class="list-item habit ${done && h.type === "check" ? "done" : ""} ${done ? "h-done" : ""}" data-habit="${h.id}">
@@ -342,13 +464,15 @@
   function listHtml() {
     const s = S();
     if (!s.habits.length) return `<div class="empty">Nog geen gewoontes. <button class="link" style="color:var(--accent2)" data-action="habits">Voeg er een toe</button></div>`;
-    const groups = ANCHORS.map(a => ({ a, list: s.habits.filter(h => (ANCHOR[plan(h).anchor] ? plan(h).anchor : "any") === a.id) })).filter(g => g.list.length);
-    if (groups.length === 1 && groups[0].a.id === "any") return s.habits.map(rowHtml).join("");
+    const act = active(), grad = s.habits.filter(h => h.graduated);
+    const groups = ANCHORS.map(a => ({ a, list: act.filter(h => (ANCHOR[plan(h).anchor] ? plan(h).anchor : "any") === a.id) })).filter(g => g.list.length);
+    const gradHtml = grad.length ? `<div class="h-group" data-anchor="auto"><span>🎓 Automatisch</span><span>${grad.filter(h => shown(h)).length}/${grad.length}</span></div>${grad.map(rowHtml).join("")}` : "";
+    if (groups.length <= 1 && (!groups.length || groups[0].a.id === "any")) return (groups.length ? `${grad.length ? '<div class="h-group" data-anchor="any"><span>📌 Hele dag</span><span></span></div>' : ""}${groups[0].list.map(rowHtml).join("")}` : "") + gradHtml;
     const cur = nowAnchor();
     return groups.map(g => {
       const left = g.list.filter(h => !shown(h) && !status(h)).length;
       return `<div class="h-group ${g.a.id === cur ? "now" : ""}" data-anchor="${g.a.id}"><span>${g.a.e} ${g.a.t}${g.a.id === cur ? " <b>· nu</b>" : ""}</span><span>${left ? left + " te gaan" : "✓"}</span></div>${g.list.map(rowHtml).join("")}`;
-    }).join("");
+    }).join("") + gradHtml;
   }
 
   /* Re-render one row in place (with a little pop on the ring) */
@@ -448,6 +572,16 @@
       <div style="margin-top:6px;font-weight:600">${txt}</div>${p.min ? `<div class="small muted" style="margin-top:4px">Minimaal: ${esc(p.min)}</div>` : ""}</div>`;
   }
 
+  function autoHtml(h) {
+    const l = lastAuto(h), lvl = reminderLevel(h);
+    const hist = (h.srbai || []).slice(-6).map(x => `<i style="height:${(x.score / 7) * 100}%"></i>`).join("");
+    return `<div class="card" style="margin-top:12px">
+      <div class="row between"><div class="eyebrow">Automatisme</div>${h.graduated ? `<button class="link small" data-ungrad>Terug naar actief</button>` : h.type === "limit" ? "" : `<button class="link small" data-auto-now>Check nu</button>`}</div>
+      <div style="font-weight:600;margin-top:6px">${h.graduated ? "🎓 Gaat vanzelf" : l ? `${String(l.score).replace(".", ",")} / 7 · ${l.score >= AUTO_GRAD ? "bijna automatisch" : l.score >= AUTO_MID ? "wordt een gewoonte" : "nog bewust werk"}` : h.type === "limit" ? "Niet van toepassing bij een limiet" : "Eerste check na 14 dagen"}</div>
+      ${hist ? `<div class="auto-hist">${hist}</div>` : ""}
+      <div class="small muted" style="margin-top:6px">🔔 Herinnering: ${lvl.t}</div></div>`;
+  }
+
   function openHabit(id, dayArg) {
     const h = get(id); if (!h) return;
     let day = dayArg || today();
@@ -481,6 +615,7 @@
         ${ctl}
         ${statusHtml(h, day)}
         ${planHtml(h)}
+        ${autoHtml(h)}
         <label class="lbl">Laatste 7 dagen</label>
         ${historyHtml(h)}
         ${statsHtml(h)}`;
@@ -514,12 +649,14 @@
           if (t.closest("[data-now]")) { const d = new Date(); setVal(h, day, d.getHours() * 60 + d.getMinutes()); redraw(); return; }
           if (t.closest("[data-clear]")) { setVal(h, day, null); redraw(); return; }
           if (t.closest("[data-check]")) { toggleCheck(h, day); redraw(); return; }
+          if (t.closest("[data-auto-now]")) { close(); setTimeout(() => autoSheet(h.id), 320); return; }
+          if (t.closest("[data-ungrad]")) { delete h.graduated; h.autoSnooze = Date.now() + 7 * DAY; Store.save(); toast(`${h.e} ${h.t} staat weer bij actief`); redraw(); return; }
           const sb = t.closest("[data-st]");
           if (sb) {
             const cur = status(h, day), v = sb.dataset.st;
             setStatus(h, day, cur && cur.s === v ? null : { s: v });
             haptic(); Sound.tap();
-            if (v === "min" && !(cur && cur.s === "min")) { Sound.success(); toast(`${h.e} Minimale versie telt. Goed bezig!`); }
+            if (v === "min" && !(cur && cur.s === "min")) { Sound.success(); toast(`${h.e} Minimale versie gelogd · klein telt ook`); }
             redraw(); return;
           }
           const why = t.closest("[data-why] [data-v]");
@@ -552,6 +689,7 @@
     };
     sheet(`
       <h2>${existing ? "Gewoonte wijzigen" : "Eigen gewoonte"}</h2>
+      ${existing ? "" : tooManyHtml()}
       <div class="row" style="margin-top:12px"><input class="field" data-emoji maxlength="4" style="width:66px;text-align:center;font-size:22px" value="${esc(h.e)}"><input class="field" data-name placeholder="Naam" value="${esc(h.t)}"></div>
       <label class="lbl">Soort</label>
       <div class="seg" data-type>${Object.entries(TYPES).map(([k, t]) => `<button data-v="${k}" class="${k === type ? "on" : ""}">${t.label}</button>`).join("")}</div>
@@ -624,6 +762,7 @@
     sheet(`
       <h2>Gewoonte toevoegen</h2>
       <p class="sub">Kies een kant-en-klare gewoonte of maak er zelf een.</p>
+      ${tooManyHtml()}
       <button class="card tap" data-custom style="width:100%;text-align:left;display:flex;gap:14px;align-items:center;margin-bottom:6px;border-color:rgba(124,92,255,.45)">
         <span style="font-size:26px">✏️</span><span><div style="font-weight:600">Eigen gewoonte</div><div class="small muted">Tellen, timer, limiet, tijdstip of afvinken</div></span></button>
       ${TEMPLATES.map(c => `
@@ -642,7 +781,7 @@
           Store.save(); haptic([10, 20, 10]); Sound.success();
           b.classList.add("have"); b.querySelector(".tpl-s").textContent = "✓ Toegevoegd";
           gsap.fromTo(b, { scale: 0.92 }, { scale: 1, duration: 0.5, ease: "back.out(3)" });
-          toast(`${t.e} ${t.t} toegevoegd`);
+          toast(active().length > 3 ? `${t.e} ${t.t} toegevoegd · dat zijn er ${active().length}, begin klein` : `${t.e} ${t.t} toegevoegd · tik erop voor je plan`);
           if (window.App) App.refresh(false);
         });
       }
@@ -661,6 +800,7 @@
     sheet(`
       <h2>Gewoontes</h2>
       <p class="sub">Vervang het oude patroon met nieuwe gewoontes. Tik op een gewoonte voor details.</p>
+      ${active().length > 3 ? tooManyHtml() : ""}
       <div data-list>${draw()}</div>
       <div style="margin-top:16px"><button class="btn" data-add>＋ Gewoonte toevoegen</button></div>`, {
       onMount(sh, close) {
@@ -729,5 +869,6 @@
   }
 
   window.Habits = { rollover, addToTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get,
-    status, setStatus, shown, weekly, weekDone, atRisk, plan, planText, ANCHORS, SKIP_REASONS };
+    status, setStatus, shown, weekly, weekDone, atRisk, plan, planText, ANCHORS, SKIP_REASONS,
+    active, autoDue, autoSheet, autoCardHtml, reminderLevel, nudges, monday };
 })();

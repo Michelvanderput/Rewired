@@ -85,3 +85,25 @@ describe("risk-moment reminders", () => {
     expect(due(rec, new Date("2026-10-07T19:50:00Z")).map(d => d.id)).toEqual(["risk0"]);
   });
 });
+
+describe("habit nudges and weekly reflection", () => {
+  const { Subscribe } = require("../../api/_schemas.js");
+  const sub = { endpoint: "https://web.push.apple.com/x", keys: { p256dh: "p", auth: "a" } };
+  const base = { tz: "Europe/Amsterdam", lastSent: {} };
+  it("only sends a habit nudge on the days the phone asked for", () => {
+    const rec = { ...base, reminders: { n0: { on: true, time: "07:30" } }, nudges: { n0: { "2026-10-07": { title: "🌅 Ochtend: push-ups", body: "Klein beginnen mag: 5 push-ups." } } } };
+    expect(due(rec, new Date("2026-10-07T05:40:00Z")).map(d => d.id)).toEqual(["n0"]);
+    expect(due(rec, new Date("2026-10-08T05:40:00Z"))).toEqual([]);
+    expect(message("n0", rec, Date.parse("2026-10-07T05:40:00Z"), "2026-10-07").title).toBe("🌅 Ochtend: push-ups");
+  });
+  it("sends the weekly reflection only on Sunday", () => {
+    const rec = { ...base, reminders: { weekly: { on: true, time: "19:00" } } };
+    expect(due(rec, new Date("2026-10-04T17:10:00Z")).map(d => d.id)).toEqual(["weekly"]); // Sunday
+    expect(due(rec, new Date("2026-10-05T17:10:00Z"))).toEqual([]); // Monday
+    expect(message("weekly", { name: "Michel" }).url).toBe("./?open=reflect");
+  });
+  it("validates nudges", () => {
+    const r = Subscribe.parse({ subscription: sub, tz: "UTC", nudges: { n0: { "2026-10-07": { title: "a", body: "b" }, nope: { title: "x", body: "y" } }, n9: {} } });
+    expect(r.nudges).toEqual({ n0: { "2026-10-07": { title: "a", body: "b" } } });
+  });
+});

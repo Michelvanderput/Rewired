@@ -72,6 +72,7 @@
     out.quiz = Object.assign({}, older.quiz || {}, newer.quiz || {});
     out.learnLog = Object.assign({}, older.learnLog || {}, newer.learnLog || {});
     out.recoveryDone = Object.assign({}, older.recoveryDone || {}, newer.recoveryDone || {});
+    out.reflections = Object.assign({}, older.reflections || {}, newer.reflections || {});
     out.rewardSeen = [...new Set([...(older.rewardSeen || []), ...(newer.rewardSeen || [])])];
     ["checkins", "reset", "habitLog"].forEach(k => { out[k] = Object.assign({}, older[k] || {}, newer[k] || {}); });
     out.habitVal = Object.assign({}, older.habitVal || {});

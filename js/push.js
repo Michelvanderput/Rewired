@@ -7,13 +7,17 @@
     { id: "morning", e: "🌅", t: "Ochtend-recap", s: "Hoe ging gisteren + streak", def: "08:00", on: true },
     { id: "midday", e: "💡", t: "Middag", s: "Gedachte van de dag", def: "12:30", on: false },
     { id: "evening", e: "✍️", t: "Avond check-in", s: "Log je stemming", def: "21:00", on: true },
-    { id: "night", e: "🌙", t: "Bedtijd", s: "Telefoon weg, naar bed", def: "23:00", on: true }
+    { id: "night", e: "🌙", t: "Bedtijd", s: "Telefoon weg, naar bed", def: "23:00", on: true },
+    { id: "weekly", e: "🪞", t: "Weekreflectie", s: "Zondag · 3 vragen over je week", def: "19:00", on: true }
   ];
+  /* Habit reminders per moment of the day; which habits are included fades with automaticity (Habits.nudges) */
+  const NUDGE_TIMES = { n0: ["🌅", "Ochtend", "07:30"], n1: ["☀️", "Middag", "12:30"], n2: ["🏁", "Na werk", "17:30"], n3: ["🌙", "Avond", "20:30"] };
 
   function prefs() {
     const s = Store.s;
     if (!s.push) s.push = { subscribed: false, dismissed: false, reminders: {} };
     REMINDERS.forEach(r => { if (!s.push.reminders[r.id]) s.push.reminders[r.id] = { on: r.on, time: r.def }; });
+    if (!s.push.nudgeTimes) s.push.nudgeTimes = Object.fromEntries(Object.entries(NUDGE_TIMES).map(([k, v]) => [k, v[2]]));
     return s.push;
   }
 
@@ -56,15 +60,28 @@
     if (!window.Risk || prefs().risk === false) return { reminders: {}, risks: [] };
     return Risk.pushReminders();
   }
-  const sig = () => JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, prefs().risk, risk(), window.Recap && Recap.summary(Store.dayKey())]);
+  /* Habit nudges for today and tomorrow, only for moments that have something to remind */
+  function habitNudges() {
+    if (!window.Habits || prefs().nudge === false) return { reminders: {}, nudges: {} };
+    const n = Habits.nudges(), reminders = {};
+    Object.keys(n).forEach(id => { reminders[id] = { on: true, time: prefs().nudgeTimes[id] || NUDGE_TIMES[id][2] }; });
+    return { reminders, nudges: n };
+  }
+  /* The weekly reminder is only useful while this week's reflection is still open */
+  function weeklyReminder() {
+    const r = prefs().reminders.weekly;
+    return { weekly: Object.assign({}, r, { on: !!r.on && !(window.Reflect && Reflect.doneThisWeek()) }) };
+  }
+  const sig = () => JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, prefs().risk, prefs().nudge, prefs().nudgeTimes, risk(), habitNudges(), weeklyReminder(), window.Recap && Recap.summary(Store.dayKey())]);
 
   function payload(sub) {
-    const s = Store.s, r = risk();
+    const s = Store.s, r = risk(), hn = habitNudges();
     return {
       subscription: sub.toJSON ? sub.toJSON() : sub,
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Amsterdam",
-      reminders: Object.assign({}, prefs().reminders, r.reminders),
+      reminders: Object.assign({}, prefs().reminders, weeklyReminder(), r.reminders, hn.reminders),
       risks: r.risks,
+      nudges: hn.nudges,
       startDate: s.startDate,
       name: s.name || "",
       // yesterday + today so the morning notification can summarise the day that just ended
@@ -177,8 +194,15 @@
           return `<div class="list-item rem" data-rem="${r.id}"><span class="li-body"><div class="li-title">${r.e} ${r.t}</div><div class="li-sub">${r.s}</div></span>
             <input type="time" class="time-in" value="${esc(v.time)}" data-time="${r.id}" ${v.on ? "" : "disabled"}>
             ${switchHtml(v.on, `data-rem-on="${r.id}"`)}</div>`;
-        }).join("") + riskRowHtml() + `<div style="padding:12px 16px 16px"><button class="btn ghost sm" style="width:100%" data-push-test>Stuur testmelding</button></div>` : ""}
+        }).join("") + riskRowHtml() + nudgeRowsHtml() + `<div style="padding:12px 16px 16px"><button class="btn ghost sm" style="width:100%" data-push-test>Stuur testmelding</button></div>` : ""}
       </div>`;
+  }
+
+  function nudgeRowsHtml() {
+    const on = prefs().nudge !== false;
+    return `<div class="list-item rem"><span class="li-body"><div class="li-title">🧭 Gewoonte-herinneringen</div><div class="li-sub">Op het moment uit je als-dan-plan. Worden minder naarmate een gewoonte vanzelf gaat.</div></span>
+      ${switchHtml(on, "data-nudge-on")}</div>` + (on ? Object.entries(NUDGE_TIMES).map(([id, [e, t]]) => `<div class="list-item rem" style="padding-left:34px"><span class="li-body"><div class="li-title" style="font-size:15px">${e} ${t}</div></span>
+      <input type="time" class="time-in" value="${esc(prefs().nudgeTimes[id])}" data-nudge-time="${id}"></div>`).join("") : "");
   }
 
   function riskRowHtml() {
@@ -216,6 +240,12 @@
         mount(el);
         return;
       }
+      const nu = e.target.closest("[data-nudge-on]");
+      if (nu) {
+        const p = prefs(); p.nudge = p.nudge === false; Store.save(); haptic(); Sound.toggle(p.nudge);
+        mount(el); scheduleSync();
+        return;
+      }
       const rk = e.target.closest("[data-risk-on]");
       if (rk) {
         const p = prefs(); p.risk = p.risk === false; Store.save(); haptic(); Sound.toggle(p.risk);
@@ -242,6 +272,8 @@
       }
     };
     el.onchange = e => {
+      const nt = e.target.closest("[data-nudge-time]");
+      if (nt && /^\d{2}:\d{2}$/.test(nt.value)) { prefs().nudgeTimes[nt.dataset.nudgeTime] = nt.value; Store.save(); scheduleSync(); toast("Tijd opgeslagen"); return; }
       const t = e.target.closest("[data-time]");
       if (t && /^\d{2}:\d{2}$/.test(t.value)) { prefs().reminders[t.dataset.time].time = t.value; Store.save(); scheduleSync(); toast("Tijd opgeslagen"); }
     };
