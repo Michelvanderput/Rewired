@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "routini-v14";
+const VERSION = "routini-v15";
 const SHELL = [
   "./",
   "index.html",

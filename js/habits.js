@@ -544,7 +544,7 @@
       extra = `<div><b>${h.type === "timer" ? Math.round(tot) : fmtT(h, tot)}</b><span>${h.type === "timer" ? "min" : (h.unit === "ml" && h.target >= 1000 ? "L" : h.unit)} deze week</span></div><div><b>${h.type === "timer" ? Math.round(tot / 7) : fmtT(h, Math.round(tot / 7 * 10) / 10)}</b><span>gem. per dag</span></div>`;
     }
     const st = streak(h), wk = weekly(h) < 7;
-    return `<div class="h-stats"><div><b>🔗 ${st}</b><span>${wk ? (st === 1 ? "week" : "weken") + " weekdoel" : (st === 1 ? "dag" : "dagen") + " volgehouden"}</span></div><div><b>${wk ? weekDone(h) + "/" + weekly(h) : hit + "/7"}</b><span>${wk ? "deze week" : "gehaald"}</span></div>${extra}</div>`;
+    return `<div class="h-stats"><div><b>🔗 ${st}</b><span>${wk ? (st === 1 ? "week" : "weken") + " doel" : (st === 1 ? "dag" : "dagen") + " lijn"}</span></div><div><b>${wk ? weekDone(h) + "/" + weekly(h) : hit + "/7"}</b><span>${wk ? "deze week" : "gehaald"}</span></div>${extra}</div>`;
   }
 
   function statusHtml(h, day) {
@@ -705,7 +705,8 @@
       <p class="small muted" style="margin-top:8px">Koppel het aan iets wat je al elke dag doet. De minimale versie is wat je doet op een slechte dag.</p>
       <div data-weekly-wrap ${type === "limit" ? 'style="display:none"' : ""}>
         <label class="lbl">Hoe vaak per week</label>
-        <div class="seg" data-weekly>${[2, 3, 4, 5, 6, 7].map(n => `<button data-v="${n}" class="${n === perWeek ? "on" : ""}">${n === 7 ? "Elke dag" : n + "×"}</button>`).join("")}</div>
+        <div class="seg" data-weekly>${[2, 3, 4, 5, 6, 7].map(n => `<button data-v="${n}" class="${n === perWeek ? "on" : ""}">${n}×</button>`).join("")}</div>
+        <p class="small muted" style="margin-top:8px">7× is elke dag. Minder dan 7: een dag overslaan past dan binnen je doel.</p>
       </div>
       <div style="margin-top:22px"><button class="btn" data-save>${existing ? "Opslaan" : "Toevoegen"}</button></div>
       ${existing ? `<div style="margin-top:10px"><button class="btn ghost" data-del style="color:var(--danger)">Verwijderen</button></div>` : ""}`, {

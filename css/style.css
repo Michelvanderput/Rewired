@@ -476,7 +476,10 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px;
 .ln-boost .quote { margin-top: 8px; font-size: 19px; }
 .ln-today { width: 100%; text-align: left; margin-top: 12px; border-color: rgba(34,211,238,.4); }
 .ln-today-t { font-family: var(--display); font-size: 22px; font-weight: 600; line-height: 1.2; margin-top: 4px; letter-spacing: -.01em; }
-.ln-paths { display: flex; gap: 10px; overflow-x: auto; margin: 0 -18px; padding: 2px 18px 6px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+/* Horizontal rows bleed to the screen edge but keep the 18px page gutter: scroll-padding keeps snapped cards off
+   the edge, and the ::after spacer replaces padding-right (Safari ignores end padding in a flex scroll row). */
+.ln-paths { display: flex; gap: 10px; overflow-x: auto; margin: 0 -18px; padding: 2px 0 6px 18px; scroll-padding-inline: 18px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.ln-paths::after { content: ""; flex: 0 0 8px; }
 .ln-paths::-webkit-scrollbar { display: none; }
 .ln-path { flex: 0 0 150px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 14px; border-radius: 20px; background: var(--card); border: 1px solid var(--border); transition: background .2s, border-color .2s; }
 .ln-path:active { transform: scale(.96); transition: transform .1s; }
@@ -488,7 +491,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px;
   background: conic-gradient(var(--accent2) calc(var(--p) * 100%), rgba(255,255,255,.08) 0); }
 .ln-path-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: #12121f; }
 .ln-path-ring span { position: relative; font-size: 20px; }
-.ln-filters { display: flex; gap: 8px; overflow-x: auto; margin: 0 -18px 12px; padding: 0 18px 4px; }
+.ln-filters { display: flex; gap: 8px; overflow-x: auto; margin: 0 -18px 12px; padding: 0 0 4px 18px; scroll-padding-inline: 18px; }
+.ln-filters::after { content: ""; flex: 0 0 10px; }
 .ln-filters::-webkit-scrollbar { display: none; }
 .ln-filters .chip { flex-shrink: 0; }
 .ln-item { width: 100%; text-align: left; display: flex; gap: 12px; align-items: center; }

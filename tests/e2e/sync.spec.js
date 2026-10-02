@@ -58,19 +58,16 @@ test("register, restore on a new phone, merge, relapse sync, delete", async ({ b
     .toEqual(expect.arrayContaining(["Van A", "Van B"]));
   expect(await A.page.evaluate(() => Store.s.urges.length)).toBe(2);
 
-  await B.page.evaluate(() => Store.relapse("Laat op bed", "")); await B.page.waitForTimeout(3500);
-  await A.page.evaluate(() => Sync.sync()); await A.page.waitForTimeout(1000);
-  expect(await A.page.evaluate(() => Store.streakDays())).toBe(0);
+  await B.page.evaluate(() => Store.relapse("Laat op bed", ""));
+  await expect.poll(async () => A.page.evaluate(async () => { await Sync.sync(); return Store.streakDays(); }), { timeout: 15000 }).toBe(0);
 
   await A.page.tap('.tab[data-tab="profile"]'); await A.page.waitForTimeout(1200);
   await A.page.tap('[data-acc="logout"]'); await A.page.waitForTimeout(1200);
   expect(await A.page.evaluate(() => Store.s.journal.length)).toBeGreaterThanOrEqual(3);
   await B.page.tap('.tab[data-tab="profile"]'); await B.page.waitForTimeout(1200);
   await B.page.tap('[data-acc="delete"]'); await B.page.waitForTimeout(600);
-  await B.page.fill(".sheet [data-p]", "SterkWachtwoord1"); await B.page.tap(".sheet [data-yes]"); await B.page.waitForTimeout(3000);
-  const db2 = await getJSON("/__db");
-  expect(db2["user:" + user]).toBeUndefined();
-  expect(db2["data:" + user]).toBeUndefined();
+  await B.page.fill(".sheet [data-p]", "SterkWachtwoord1"); await B.page.tap(".sheet [data-yes]");
+  await expect.poll(async () => { const db2 = await getJSON("/__db"); return [db2["user:" + user], db2["data:" + user]]; }, { timeout: 15000 }).toEqual([undefined, undefined]);
   expect(A.errors).toEqual([]);
   expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();

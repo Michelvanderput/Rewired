@@ -48,7 +48,7 @@
     const st = stats(m);
     return `<div class="card" style="margin-top:4px">
       ${st.habits.map(x => `<div class="row between" style="padding:4px 0"><span>${esc(x.h.e)} ${esc(x.h.t)}</span><span class="${x.n >= x.of ? "" : "muted"}">${x.n}/${x.of}${x.n >= x.of ? " ✓" : ""}</span></div>`).join("")}
-      <div class="small muted" style="margin-top:${st.habits.length ? 10 : 0}px">🌊 ${st.urges} drang gelogd · ${st.resisted} weerstaan${st.rel ? ` · ${st.rel} terugval` : ""} · ✍️ ${st.checkins}/7 check-ins</div>
+      <div class="small muted" style="margin-top:${st.habits.length ? 10 : 0}px">🌊 ${st.urges} drang gelogd · ${st.resisted} weerstaan${st.rel ? ` · ${st.rel} terugval` : ""} · ✍️ ${st.checkins}/7 check‑ins</div>
     </div>`;
   }
 
