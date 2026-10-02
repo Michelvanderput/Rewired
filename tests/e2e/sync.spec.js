@@ -53,9 +53,9 @@ test("register, restore on a new phone, merge, relapse sync, delete", async ({ b
   await A.page.evaluate(() => { Store.s.journal.push({ ts: Date.now(), text: "Van A" }); Store.save(); });
   await B.page.evaluate(() => { Store.s.journal.push({ ts: Date.now() + 5, text: "Van B" }); Store.logUrge({ intensity: 5, trigger: "Moe", resisted: true }); });
   await A.page.waitForTimeout(4000); await B.page.waitForTimeout(4000);
-  await A.page.evaluate(() => Sync.sync()); await A.page.waitForTimeout(1500);
-  const aj = await A.page.evaluate(() => Store.s.journal.map(j => j.text));
-  expect(aj).toEqual(expect.arrayContaining(["Van A", "Van B"]));
+  // a sync already in flight is returned as-is, so keep syncing until B's upload has arrived (eventual consistency)
+  await expect.poll(async () => A.page.evaluate(async () => { await Sync.sync(); return Store.s.journal.map(j => j.text); }), { timeout: 15000 })
+    .toEqual(expect.arrayContaining(["Van A", "Van B"]));
   expect(await A.page.evaluate(() => Store.s.urges.length)).toBe(2);
 
   await B.page.evaluate(() => Store.relapse("Laat op bed", "")); await B.page.waitForTimeout(3500);

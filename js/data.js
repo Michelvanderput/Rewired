@@ -15,6 +15,8 @@ window.DATA = {
   ],
 
   triggers: ["Verveling", "Stress", "Eenzaamheid", "Social media", "Laat op bed", "Alleen thuis", "Moe", "Verdriet", "Boosheid", "Na alcohol", "Anders"],
+  places: ["Slaapkamer", "Bank / woonkamer", "Badkamer", "Bureau", "Werk / school", "Onderweg", "Ergens anders"],
+  feelings: ["Verveeld", "Gestrest", "Eenzaam", "Moe", "Verdrietig", "Boos", "Onrustig", "Prima"],
 
   reasons: [
     "Meer energie en focus",

@@ -120,6 +120,14 @@ function message(id, rec, now = Date.now()) {
       url: "./?open=home", tag: "morning"
     };
   }
+  if (/^risk\d$/.test(id)) {
+    const r = (rec.risks || [])[+id.slice(4)];
+    return {
+      title: `⚠️ Over 15 min: jouw risicomoment${r && r.label ? " (" + r.label + ")" : ""}`,
+      body: r ? [r.detail && r.detail[0].toUpperCase() + r.detail.slice(1), r.tip].filter(Boolean).join(". ") : `Rond deze tijd kwam drang vaak op${name}. Bedenk nu wat je in plaats daarvan doet.`,
+      url: "./?open=home", tag: "risk"
+    };
+  }
   if (id === "midday") {
     return { title: "Gedachte van de dag", body: pick(QUOTES, seed), url: "./?open=home", tag: "midday" };
   }

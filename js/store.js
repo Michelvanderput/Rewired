@@ -15,13 +15,14 @@
     pledge: "",
     signature: "",
     relapses: [],        // [{ts, trigger, note, streakMs}]
-    urges: [],           // [{ts, intensity, trigger, resisted, note}]
+    urges: [],           // [{ts, intensity, trigger, resisted, note, place, feeling}]
     checkins: {},        // {"YYYY-MM-DD": {mood, energy, note}}
     reset: {},           // {"YYYY-MM-DD": [taskId]}
     habits: DATA.defaultHabits.slice(),
     habitLog: {},        // {"YYYY-MM-DD": [habitId]}  (completed habits)
     habitVal: {},        // {"YYYY-MM-DD": {habitId: value}} (counts, minutes, time of day)
     habitTimer: {},      // {habitId: {start, day}} running timers
+    habitStatus: {},     // {"YYYY-MM-DD": {habitId: {s: "min"|"skip", why}}}
     journal: [],         // [{ts, text, mood}]
     lessonsDone: [],
     sessions: { light: 0, breath: 0, meditate: 0, panic: 0, minutes: 0 },
@@ -74,10 +75,10 @@
       return done.length ? done[done.length - 1].d : 0;
     },
 
-    relapse(trigger, note) {
+    relapse(trigger, note, extra = {}) {
       const ms = this.streakMs();
       if (ms > state.bestStreak) state.bestStreak = ms;
-      state.relapses.push({ ts: Date.now(), trigger, note, streakMs: ms });
+      state.relapses.push(Object.assign({ ts: Date.now(), trigger, note, streakMs: ms }, extra));
       state.startDate = Date.now();
       this.save();
     },

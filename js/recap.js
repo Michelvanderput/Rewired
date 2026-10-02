@@ -69,12 +69,19 @@
     const H = window.Habits;
 
     // habits
-    const habits = s.habits.filter(h => (h.created || 0) < end);
+    let habits = s.habits.filter(h => (h.created || 0) < end);
     let habitScore = 0, hDone = 0;
     const misses = [];
+    // a planned rest day, or a skip that still fits the weekly target, is not a miss: leave it out of the count
+    const excused = h => { const st = H.status(h, day); return !H.shown(h, day) && st && st.s === "skip" && (st.why === "Bewuste rustdag" || H.weekly(h) < 7); };
+    habits.filter(excused).forEach(h => good.push({ e: h.e, t: `${h.t}: rustdag (${H.weekly(h) < 7 ? H.weekly(h) + "× per week" : "gepland"})`, short: h.t, neutral: true }));
+    habits = habits.filter(h => !excused(h));
     habits.forEach(h => {
-      const done = H.isDone(h, day), v = H.val(h, day), p = H.progress(h, day), f = x => H.fmt(h, x);
-      if (done) {
+      const done = H.isDone(h, day), v = H.val(h, day), p = H.progress(h, day), f = x => H.fmt(h, x), st = H.status(h, day);
+      if (!done && H.shown(h, day)) {
+        hDone++; habitScore += 0.7;
+        good.push({ e: h.e, t: `${h.t}: minimale versie${H.plan(h).min ? " (" + H.plan(h).min + ")" : ""}`, short: h.t });
+      } else if (done) {
         hDone++; habitScore += 1;
         const txt = h.type === "check" ? h.t : h.type === "limit" ? `${h.t}: ${f(v)} (max ${f(h.target)})` : h.type === "time" ? `${h.t}: ${f(v)}` : `${h.t}: ${f(v)}`;
         good.push({ e: h.e, t: txt, short: h.t });
@@ -85,6 +92,7 @@
         else if (h.type === "limit") txt = `${h.t}: ${f(v)}, dat is ${f(Math.round((v - h.target) * 100) / 100)} boven je limiet`;
         else if (h.type === "time") txt = v == null ? `${h.t}: niet gelogd` : `${h.t}: ${f(v)} (doel vóór ${f(h.target)})`;
         else txt = `${h.t}: niet gedaan`;
+        if (st && st.s === "skip") txt = `${h.t}: overgeslagen${st.why ? " · " + st.why : ""}`;
         misses.push({ h, p: h.type === "limit" ? 0 : p });
         bad.push({ e: h.e, t: txt, short: h.t });
       }
@@ -168,7 +176,7 @@
   function summary(day) {
     const r = compute(day);
     if (r.empty) return null;
-    const g = r.good.find(x => x.short !== "clean") || r.good[0], b = r.bad.find(x => x.short !== "terugval");
+    const g = r.good.find(x => x.short !== "clean" && !x.neutral) || r.good[0], b = r.bad.find(x => x.short !== "terugval");
     const body = [g ? "✅ " + g.short : "", b ? "⚠️ " + b.short : ""].filter(Boolean).join(" · ");
     return {
       day,

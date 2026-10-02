@@ -45,6 +45,7 @@
         </div>
       </header>
       ${Push.homeCardHtml()}
+      ${Risk.homeCardHtml()}
       ${Rewards.recoveryCardHtml()}
 
       <div class="card hero" data-anim>
@@ -201,7 +202,10 @@
         ${trigArr.length ? trigArr.map(([n, c]) => `<div class="hbar"><span class="n">${esc(n)}</span><div class="bar"><i data-w="${(c / tmax) * 100}"></i></div><span class="c">${c}</span></div>`).join("") : `<div class="empty">Log je drang om je triggers te ontdekken.</div>`}
       </div>
 
-      <div class="section-title" data-anim><h3>Risicomomenten</h3></div>
+      <div class="section-title" data-anim><h3>Jouw risicomomenten</h3><span class="small muted">top 3</span></div>
+      <div class="card" data-anim data-risk>${Risk.progressHtml()}</div>
+
+      <div class="section-title" data-anim><h3>Per dagdeel</h3></div>
       <div class="card" data-anim>
         ${todCounts.map(([n, c]) => `<div class="hbar"><span class="n">${n}</span><div class="bar"><i data-w="${(c / todMax) * 100}"></i></div><span class="c">${c}</span></div>`).join("")}
         ${peak[1] > 0 ? `<p class="small muted" style="margin-top:14px">Je bent het kwetsbaarst in de <b style="color:#fff">${peak[0].split(" ")[1].toLowerCase()}</b>. Plan voor dat moment een vervangende activiteit.</p>` : ""}
@@ -463,14 +467,20 @@
   }
 
   function urgeSheet() {
-    let intensity = 5, trigger = "", resisted = true;
+    let intensity = 5, trigger = "", resisted = true, place = "", feeling = "";
+    const left = Risk.NEED - S().urges.concat(S().relapses).length;
     sheet(`
       <h2>Drang loggen</h2>
       <p class="sub">Loggen zelf is al een vorm van controle. Je stapt uit de automatische piloot.</p>
       <label class="lbl">Intensiteit · <span data-iv>5</span>/10</label>
       <input type="range" min="1" max="10" value="5" data-int>
+      <label class="lbl">Waar ben je?</label>
+      ${chipsHtml(DATA.places, [], "place")}
+      <label class="lbl">Hoe voel je je?</label>
+      ${chipsHtml(DATA.feelings, [], "feel")}
       <label class="lbl">Trigger</label>
       ${chipsHtml(DATA.triggers, [], "trig")}
+      ${left > 0 ? `<p class="small muted" style="margin-top:8px">Nog ${left} ${left === 1 ? "log" : "logs"} tot je persoonlijke risicomomenten zichtbaar worden.</p>` : ""}
       <label class="lbl">Resultaat</label>
       <div class="seg" data-res><button class="on" data-v="1">💪 Weerstaan</button><button data-v="0">Toegegeven</button></div>
       <label class="lbl">Notitie (optioneel)</label>
@@ -482,6 +492,8 @@
           iv.style.color = intensity >= 8 ? "var(--danger)" : intensity >= 5 ? "var(--warn)" : "var(--ok)";
         });
         bindChips(sh, "trig", false, v => trigger = v[0] || "");
+        bindChips(sh, "place", false, v => place = v[0] || "");
+        bindChips(sh, "feel", false, v => feeling = v[0] || "");
         $("[data-res]", sh).addEventListener("click", e => {
           const b = e.target.closest("button"); if (!b) return;
           $$("[data-res] button", sh).forEach(x => x.classList.toggle("on", x === b));
@@ -489,9 +501,11 @@
         });
         $("[data-save]", sh).addEventListener("click", () => {
           const note = $("[data-note]", sh).value.trim();
-          Store.logUrge({ intensity, trigger, resisted, note });
+          const before = Risk.moments().length;
+          Store.logUrge({ intensity, trigger, resisted, note, place, feeling });
           close();
-          if (!resisted) { setTimeout(() => relapseSheet(trigger, note), 350); return; }
+          if (!resisted) { setTimeout(() => relapseSheet(trigger, note, { place, feeling }), 350); return; }
+          if (!before && Risk.moments().length) setTimeout(() => toast("📍 Je risicomomenten zijn nu zichtbaar bij Voortgang"), 3200);
           Sound.success(); haptic([10, 30, 10]); confetti(50);
           toast("Drang weerstaan. Sterk! 🛡️"); refresh();
           if (intensity >= 7) setTimeout(() => toast("Tip: probeer nu Lichttherapie of Ademhaling"), 3000);
@@ -500,7 +514,7 @@
     });
   }
 
-  function relapseSheet(preTrigger = "", preNote = "") {
+  function relapseSheet(preTrigger = "", preNote = "", extra = {}) {
     let trigger = preTrigger;
     sheet(`
       <h2>Terugval registreren</h2>
@@ -516,7 +530,7 @@
         $("[data-cancel]", sh).addEventListener("click", close);
         $("[data-save]", sh).addEventListener("click", () => {
           const old = Store.streakDays();
-          Store.relapse(trigger, $("[data-note]", sh).value.trim());
+          Store.relapse(trigger, $("[data-note]", sh).value.trim(), extra);
           close();
           fullscreen(`
             <div class="fs-center">

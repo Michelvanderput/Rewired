@@ -509,3 +509,16 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px;
 .ln-save { font-size: 24px; padding: 4px 6px; }
 .ln-step .li-ico { font-weight: 700; font-size: 14px; }
 .ln-step.done .li-ico { background: rgba(52,211,153,.2); color: var(--ok); }
+
+/* Habits grouped by moment of the day */
+.h-group { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.h-group:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; }
+.h-group.now { color: #fff; }
+.h-group.now b { color: var(--accent2); font-weight: 600; }
+
+/* Risk moments */
+.risk-card { border-color: rgba(251,191,36,.45); background: linear-gradient(135deg, rgba(251,191,36,.10), rgba(255,255,255,.03)); margin-bottom: 12px; }
+.risk-row { display: flex; gap: 12px; padding: 12px 0; }
+.risk-row + .risk-row { border-top: 1px solid var(--border); }
+.risk-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 700; background: rgba(251,191,36,.16); color: var(--warn); }
+.h-warn { color: var(--warn); margin-top: 2px; }

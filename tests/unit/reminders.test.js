@@ -63,3 +63,25 @@ describe("validation", () => {
     expect(validSubscription({ endpoint: "http://web.push.apple.com/abc", keys })).toBe(false);
   });
 });
+
+describe("risk-moment reminders", () => {
+  const { Subscribe } = require("../../api/_schemas.js");
+  const sub = { endpoint: "https://web.push.apple.com/x", keys: { p256dh: "p", auth: "a" } };
+  it("accepts up to 3 risk reminders with labels", () => {
+    const r = Subscribe.parse({ subscription: sub, tz: "UTC",
+      reminders: { risk0: { on: true, time: "21:45" }, risk3: { on: true, time: "10:00" } },
+      risks: [{ label: "22:00–00:00", detail: "meestal slaapkamer · moe", tip: "Ga eerder slapen." }, "bad", {}] });
+    expect(r.reminders).toEqual({ risk0: { on: true, time: "21:45" } });
+    expect(r.risks).toEqual([{ label: "22:00–00:00", detail: "meestal slaapkamer · moe", tip: "Ga eerder slapen." }, null, null]);
+  });
+  it("builds a message from the label", () => {
+    const m = message("risk0", { risks: [{ label: "22:00–00:00", detail: "meestal slaapkamer · moe", tip: "Ga eerder slapen." }] });
+    expect(m.title).toBe("⚠️ Over 15 min: jouw risicomoment (22:00–00:00)");
+    expect(m.body).toBe("Meestal slaapkamer · moe. Ga eerder slapen.");
+    expect(message("risk2", { name: "Michel" }).body).toMatch(/kwam drang vaak op, Michel/);
+  });
+  it("is due like any other reminder", () => {
+    const rec = { tz: "Europe/Amsterdam", reminders: { risk0: { on: true, time: "21:45" } }, lastSent: {} };
+    expect(due(rec, new Date("2026-10-07T19:50:00Z")).map(d => d.id)).toEqual(["risk0"]);
+  });
+});

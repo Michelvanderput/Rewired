@@ -7,7 +7,7 @@
     { id: "morning", e: "🌅", t: "Ochtend-recap", s: "Hoe ging gisteren + streak", def: "08:00", on: true },
     { id: "midday", e: "💡", t: "Middag", s: "Gedachte van de dag", def: "12:30", on: false },
     { id: "evening", e: "✍️", t: "Avond check-in", s: "Log je stemming", def: "21:00", on: true },
-    { id: "night", e: "🌙", t: "Risicomoment", s: "Telefoon weg, naar bed", def: "23:00", on: true }
+    { id: "night", e: "🌙", t: "Bedtijd", s: "Telefoon weg, naar bed", def: "23:00", on: true }
   ];
 
   function prefs() {
@@ -51,12 +51,20 @@
     return navigator.serviceWorker.ready;
   }
 
+  /* Personal risk moments (from the urge log) become extra reminders, 15 minutes before each window */
+  function risk() {
+    if (!window.Risk || prefs().risk === false) return { reminders: {}, risks: [] };
+    return Risk.pushReminders();
+  }
+  const sig = () => JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, prefs().risk, risk(), window.Recap && Recap.summary(Store.dayKey())]);
+
   function payload(sub) {
-    const s = Store.s;
+    const s = Store.s, r = risk();
     return {
       subscription: sub.toJSON ? sub.toJSON() : sub,
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Amsterdam",
-      reminders: prefs().reminders,
+      reminders: Object.assign({}, prefs().reminders, r.reminders),
+      risks: r.risks,
       startDate: s.startDate,
       name: s.name || "",
       // yesterday + today so the morning notification can summarise the day that just ended
@@ -77,9 +85,9 @@
   function scheduleSync() {
     const p = prefs();
     if (!p.subscribed) return;
-    const sig = JSON.stringify([Store.s.startDate, Store.s.name, p.reminders, window.Recap && Recap.summary(Store.dayKey())]);
-    if (sig === lastSig) return;
-    lastSig = sig;
+    const now = sig();
+    if (now === lastSig) return;
+    lastSig = now;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => sync().catch(() => {}), 1500);
   }
@@ -97,7 +105,7 @@
     const r = await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(sub)) });
     if (!r.ok) throw new Error("server");
     prefs().subscribed = true; Store.save();
-    lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, window.Recap && Recap.summary(Store.dayKey())]);
+    lastSig = sig();
   }
 
   async function disable() {
@@ -133,7 +141,7 @@
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(k.key) });
       }
       await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(sub)) });
-      lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, window.Recap && Recap.summary(Store.dayKey())]);
+      lastSig = sig();
     } catch {}
   }
 
@@ -169,8 +177,14 @@
           return `<div class="list-item rem" data-rem="${r.id}"><span class="li-body"><div class="li-title">${r.e} ${r.t}</div><div class="li-sub">${r.s}</div></span>
             <input type="time" class="time-in" value="${esc(v.time)}" data-time="${r.id}" ${v.on ? "" : "disabled"}>
             ${switchHtml(v.on, `data-rem-on="${r.id}"`)}</div>`;
-        }).join("") + `<div style="padding:12px 16px 16px"><button class="btn ghost sm" style="width:100%" data-push-test>Stuur testmelding</button></div>` : ""}
+        }).join("") + riskRowHtml() + `<div style="padding:12px 16px 16px"><button class="btn ghost sm" style="width:100%" data-push-test>Stuur testmelding</button></div>` : ""}
       </div>`;
+  }
+
+  function riskRowHtml() {
+    const n = window.Risk ? Risk.moments().length : 0, on = prefs().risk !== false;
+    return `<div class="list-item rem"><span class="li-body"><div class="li-title">⚠️ Vooraf bij risicomoment</div><div class="li-sub">${n ? `15 min voor je ${n} risicomoment${n === 1 ? "" : "en"} (${Risk.moments().map(m => m.label.split("–")[0]).join(", ")})` : `Werkt na ${window.Risk ? Risk.NEED : 10} drang-logs`}</div></span>
+      ${switchHtml(on, "data-risk-on")}</div>`;
   }
 
   async function mount(el) {
@@ -200,6 +214,13 @@
           toast(m === "denied" ? "Toestemming geweigerd" : m === "dismissed" ? "Geen toestemming gegeven" : m === "config" ? "Server nog niet ingesteld" : m === "offline" ? "Geen internet" : "Aanzetten mislukt, probeer opnieuw");
         }
         mount(el);
+        return;
+      }
+      const rk = e.target.closest("[data-risk-on]");
+      if (rk) {
+        const p = prefs(); p.risk = p.risk === false; Store.save(); haptic(); Sound.toggle(p.risk);
+        rk.classList.toggle("on", p.risk); rk.setAttribute("aria-checked", p.risk);
+        scheduleSync();
         return;
       }
       const ro = e.target.closest("[data-rem-on]");

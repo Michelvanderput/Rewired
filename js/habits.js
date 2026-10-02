@@ -1,6 +1,12 @@
 /* Habits with types: check (afvinken), count (tellen), timer, limit (minderen) and time (tijdstip).
    Values live in state.habitVal[day][habitId]; completion is mirrored in state.habitLog[day]
-   so the discipline score, calendar and sync keep working. */
+   so the discipline score, calendar and sync keep working.
+
+   Behaviour design:
+   - every habit can have an if-then plan: moment (anchor), cue ("Na mijn koffie"), place and a minimum version
+   - a day can be marked "minimaal" (the small version counts as showing up) or "overgeslagen" with a reason,
+     stored in state.habitStatus[day][habitId] = { s: "min" | "skip", why }
+   - a weekly target (h.weekly, 1–7 days) and "nooit twee keer missen": one missed day never breaks the line */
 (function () {
   const { $, $$, esc, haptic, toast, confetti, sheet } = FX;
   const DAY = Store.DAY;
@@ -57,6 +63,36 @@
     ] }
   ];
   const TPL = {}; TEMPLATES.forEach(c => c.items.forEach(i => { TPL[i.tpl] = i; }));
+
+  /* Moments of the day a habit is anchored to; the home screen groups habits by these */
+  const ANCHORS = [
+    { id: "morning", e: "🌅", t: "Ochtend", from: 4, to: 12 },
+    { id: "midday", e: "☀️", t: "Middag", from: 12, to: 17 },
+    { id: "afterwork", e: "🏁", t: "Na werk", from: 17, to: 20 },
+    { id: "evening", e: "🌙", t: "Avond", from: 20, to: 4 },
+    { id: "any", e: "📌", t: "Hele dag" }
+  ];
+  const ANCHOR = Object.fromEntries(ANCHORS.map(a => [a.id, a]));
+  function nowAnchor(d = new Date()) {
+    const h = d.getHours();
+    return ANCHORS.find(a => a.from != null && (a.from < a.to ? h >= a.from && h < a.to : h >= a.from || h < a.to)).id;
+  }
+
+  /* Sensible starting plans: moment + the smallest version that still counts */
+  const PLAN = {
+    water: ["any", "1 glas water"], steps: ["any", "Een rondje om het blok"], veggies: ["any", "1 stuk fruit"], sleep: ["evening", "Om 23:30 in bed"],
+    vitamins: ["morning", ""], floss: ["evening", "1 tand flossen"],
+    pushups: ["morning", "5 push-ups"], squats: ["morning", "10 squats"], pullups: ["afterwork", "1 pull-up"], situps: ["morning", "10 sit-ups"],
+    plank: ["morning", "30 seconden"], workout: ["afterwork", "10 minuten bewegen"], cold: ["morning", "30 seconden koud aan het eind"],
+    meditate: ["morning", "1 minuut ademen"], read: ["evening", "1 bladzijde"], deepwork: ["morning", "15 minuten zonder telefoon"],
+    outside: ["midday", "5 minuten naar buiten"], learn: ["evening", "1 korte les"], gratitude: ["evening", "1 ding opschrijven"],
+    screen: ["any", ""], social: ["any", ""], coffee: ["any", ""], sugar: ["any", ""], alcohol: ["any", ""],
+    wake: ["morning", ""], bed: ["evening", ""], nosnooze: ["morning", ""], bedroom: ["evening", "Lader in de gang leggen"], makebed: ["morning", "Alleen het dekbed rechttrekken"]
+  };
+  const defaultPlan = tpl => { const p = PLAN[tpl] || ["any", ""]; return { anchor: p[0], cue: "", where: "", min: p[1] }; };
+  const plan = h => Object.assign(defaultPlan(h.tpl), h.plan || {});
+
+  const SKIP_REASONS = ["Geen tijd", "Vergeten", "Moe of ziek", "Geen zin", "Bewuste rustdag", "Anders"];
 
   /* Smart links: reaching a habit also ticks the matching Dopamine Reset task */
   const LINKS = { cold: ["cold", 1], meditate: ["meditate", 5], read: ["read", 15], workout: ["move", 20], outside: ["sun", 10], steps: ["move", 6000] };
@@ -119,6 +155,45 @@
   }
   function over(h, day = today()) { return h.type === "limit" && val(h, day) > h.target; }
 
+  /* ---------- check-in status, weekly target, never miss twice ---------- */
+  function status(h, day = today()) { return ((S().habitStatus || {})[day] || {})[h.id] || null; }
+  function setStatus(h, day, st) {
+    const all = S().habitStatus || (S().habitStatus = {});
+    const map = all[day] || (all[day] = {});
+    if (st) map[h.id] = st; else delete map[h.id];
+    if (!Object.keys(map).length) delete all[day];
+    Store.save();
+  }
+  const canMin = h => h.type !== "limit";
+  /* showed up: goal reached, or the minimum version was done */
+  function shown(h, day = today()) { return isDone(h, day) || (canMin(h) && (status(h, day) || {}).s === "min"); }
+  /* a consciously planned rest day is not a miss */
+  const rested = (h, day) => { const st = status(h, day); return !!(st && st.s === "skip" && st.why === "Bewuste rustdag"); };
+  const weekly = h => Math.min(7, Math.max(1, Math.round(h.weekly || 7)));
+  const createdDay = h => Store.dayKey(h.created || 0);
+
+  /* Monday of the week of ts, as a timestamp at noon (safe across DST) */
+  function monday(ts = Date.now()) {
+    const d = new Date(ts); d.setHours(12, 0, 0, 0);
+    return d.getTime() - ((d.getDay() + 6) % 7) * DAY;
+  }
+  function weekDone(h, ts = Date.now()) {
+    const m = monday(ts), end = Store.dayKey(ts) < today() ? Store.dayKey(m + 6 * DAY) : today();
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const k = Store.dayKey(m + i * DAY);
+      if (k > end) break;
+      if (k >= createdDay(h) && shown(h, k)) n++;
+    }
+    return n;
+  }
+  function missed(h, day) { return day >= createdDay(h) && day < today() && !shown(h, day) && !rested(h, day); }
+  /* Daily habits: yesterday was missed and today isn't done yet → today matters ("nooit twee keer missen") */
+  function atRisk(h) {
+    if (weekly(h) < 7 || h.type === "limit") return false;
+    return missed(h, Store.dayKey(Date.now() - DAY)) && !shown(h);
+  }
+
   function mirror(h, day) {
     const log = S().habitLog;
     const arr = log[day] || (log[day] = []);
@@ -143,6 +218,7 @@
     else map[h.id] = h.type === "time" ? v : Math.max(0, Math.round(v * 100) / 100);
     mirror(h, day);
     linkReset(h, day);
+    if (isDone(h, day) && status(h, day)) setStatus(h, day, null);
     Store.save();
     const now = isDone(h, day);
     if (!quiet && !was && now && h.type !== "limit") { Sound.success(); haptic([15, 40, 15]); confetti(50); toast(`${h.e} ${h.t}: doel gehaald!`); }
@@ -150,6 +226,7 @@
   }
   function toggleCheck(h, day = today()) {
     const on = Store.toggleIn("habitLog", h.id, day);
+    if (on && status(h, day)) setStatus(h, day, null);
     linkReset(h, day);
     if (on) { Sound.toggle(true); haptic([10, 20, 10]); } else Sound.toggle(false);
     return on;
@@ -166,16 +243,30 @@
     Sound.toggle(false);
   }
 
+  /* Length of the current line. Daily habits: days shown up, where a single missed day is forgiven and only
+     two misses in a row end the line. Weekly habits (fewer than 7 days): weeks in a row the target was reached. */
   function streak(h) {
     let n = 0;
+    if (weekly(h) < 7) {
+      const thisWeek = weekDone(h) >= weekly(h) ? 1 : 0;
+      for (let w = 1; w < 60; w++) {
+        const ts = monday() - w * 7 * DAY;
+        if (Store.dayKey(ts + 6 * DAY) < createdDay(h)) break;
+        if (weekDone(h, ts + 6 * DAY) >= weekly(h)) n++; else break;
+      }
+      return n + thisWeek;
+    }
+    let miss = 0;
     for (let i = 0; i < 400; i++) {
       const k = Store.dayKey(Date.now() - i * DAY);
-      if (k < Store.dayKey(h.created || 0)) break;
-      if (isDone(h, k)) n++;
-      else if (i > 0) break;
+      if (k < createdDay(h)) break;
+      if (shown(h, k)) { n++; miss = 0; }
+      else if (i === 0 || rested(h, k)) continue;
+      else if (++miss >= 2) break;
     }
     return n;
   }
+  const lineTxt = h => { const n = streak(h); return weekly(h) < 7 ? `${n} ${n === 1 ? "week" : "weken"}` : dagen(n); };
   function doneCount(day) { return S().habits.filter(h => isDone(h, day)).length; }
 
   /* ---------- formatting ---------- */
@@ -193,10 +284,18 @@
   const stepLabel = (h, st) => h.unit === "ml" ? (st >= 1000 ? "+" + nf.format(st / 1000) + " L" : "+" + st + " ml") : "+" + nf.format(st);
 
   function subText(h) {
+    const st = isDone(h) ? null : status(h), p = plan(h);
+    if (st && st.s === "skip") return `<span class="muted">Overgeslagen${st.why ? " · " + esc(st.why) : ""}</span>`;
+    if (st && st.s === "min" && !isDone(h)) return `<span style="color:var(--ok)">½ Minimale versie gedaan</span>${weekTxt(h)}`;
+    if (atRisk(h)) return baseSub(h) + `<div class="h-warn">Gisteren gemist${p.min ? " · minimaal " + esc(p.min.charAt(0).toLowerCase() + p.min.slice(1)) : " · vandaag telt"}</div>`;
+    return baseSub(h) + weekTxt(h);
+  }
+  const weekTxt = h => weekly(h) < 7 ? ` · ${weekDone(h)}/${weekly(h)} deze week` : "";
+  function baseSub(h) {
     const v = val(h), st = streak(h);
-    const fire = st > 1 ? ` · 🔥 ${st}` : "";
+    const fire = st > 1 && weekly(h) === 7 ? ` · 🔗 ${st}` : "";
     switch (h.type) {
-      case "check": return dagen(st) + " op rij";
+      case "check": return weekly(h) < 7 ? (isDone(h) ? "Gedaan vandaag" : "Nog niet gedaan") : dagen(st) + " volgehouden";
       case "count": return `${fmtT(h, v)} / ${fmt(h, h.target)}${fire}`;
       case "timer": {
         const r = running(h);
@@ -210,8 +309,9 @@
 
   const R = 17, C = 2 * Math.PI * R;
   function ring(h, day = today()) {
-    const p = progress(h, day), done = isDone(h, day), bad = over(h, day);
-    const col = bad ? "var(--danger)" : h.type === "limit" ? "var(--warn)" : done ? "var(--ok)" : "url(#hg)";
+    const done = isDone(h, day), bad = over(h, day), min = !done && shown(h, day);
+    const p = min ? Math.max(0.5, progress(h, day)) : progress(h, day);
+    const col = bad ? "var(--danger)" : h.type === "limit" ? "var(--warn)" : done || min ? "var(--ok)" : "url(#hg)";
     return `<span class="h-ring ${done ? "is-done" : ""}">
       <svg viewBox="0 0 40 40" width="40" height="40"><defs><linearGradient id="hg"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
         <circle cx="20" cy="20" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3.5"/>
@@ -238,10 +338,17 @@
     </div>`;
   }
 
+  /* Today: grouped by moment of the day (only when at least one habit has a moment other than "Hele dag") */
   function listHtml() {
     const s = S();
     if (!s.habits.length) return `<div class="empty">Nog geen gewoontes. <button class="link" style="color:var(--accent2)" data-action="habits">Voeg er een toe</button></div>`;
-    return s.habits.map(rowHtml).join("");
+    const groups = ANCHORS.map(a => ({ a, list: s.habits.filter(h => (ANCHOR[plan(h).anchor] ? plan(h).anchor : "any") === a.id) })).filter(g => g.list.length);
+    if (groups.length === 1 && groups[0].a.id === "any") return s.habits.map(rowHtml).join("");
+    const cur = nowAnchor();
+    return groups.map(g => {
+      const left = g.list.filter(h => !shown(h) && !status(h)).length;
+      return `<div class="h-group ${g.a.id === cur ? "now" : ""}" data-anchor="${g.a.id}"><span>${g.a.e} ${g.a.t}${g.a.id === cur ? " <b>· nu</b>" : ""}</span><span>${left ? left + " te gaan" : "✓"}</span></div>${g.list.map(rowHtml).join("")}`;
+    }).join("");
   }
 
   /* Re-render one row in place (with a little pop on the ring) */
@@ -312,8 +419,33 @@
       const tot = hist.reduce((a, d) => a + (d.v || 0), 0);
       extra = `<div><b>${h.type === "timer" ? Math.round(tot) : fmtT(h, tot)}</b><span>${h.type === "timer" ? "min" : (h.unit === "ml" && h.target >= 1000 ? "L" : h.unit)} deze week</span></div><div><b>${h.type === "timer" ? Math.round(tot / 7) : fmtT(h, Math.round(tot / 7 * 10) / 10)}</b><span>gem. per dag</span></div>`;
     }
-    const st = streak(h);
-    return `<div class="h-stats"><div><b>🔥 ${st}</b><span>${st === 1 ? "dag" : "dagen"} op rij</span></div><div><b>${hit}/7</b><span>gehaald</span></div>${extra}</div>`;
+    const st = streak(h), wk = weekly(h) < 7;
+    return `<div class="h-stats"><div><b>🔗 ${st}</b><span>${wk ? (st === 1 ? "week" : "weken") + " weekdoel" : (st === 1 ? "dag" : "dagen") + " volgehouden"}</span></div><div><b>${wk ? weekDone(h) + "/" + weekly(h) : hit + "/7"}</b><span>${wk ? "deze week" : "gehaald"}</span></div>${extra}</div>`;
+  }
+
+  function statusHtml(h, day) {
+    if (!canMin(h) || isDone(h, day)) return "";
+    const st = status(h, day) || {}, p = plan(h);
+    return `<label class="lbl">Lukt het niet helemaal?</label>
+      <div class="seg" data-status><button class="${st.s === "min" ? "on" : ""}" data-st="min">½ Minimale versie</button><button class="${st.s === "skip" ? "on" : ""}" data-st="skip">Overslaan</button></div>
+      ${st.s === "min" ? `<p class="small muted" style="margin-top:8px">Telt als komen opdagen${p.min ? ` (${esc(p.min)})` : ""}. Klein doen houdt de gewoonte levend.</p>` : ""}
+      ${st.s === "skip" ? `<div class="chips" style="margin-top:10px" data-why>${SKIP_REASONS.map(r => `<button class="chip ${st.why === r ? "on" : ""}" data-v="${r}">${r}</button>`).join("")}</div>
+        <p class="small muted" style="margin-top:8px">${weekly(h) < 7 ? "Je weekdoel is " + weekly(h) + " dagen, dus een dag overslaan kan." : "Eén keer missen is menselijk. Zorg dat het niet twee keer op rij gebeurt."}</p>` : ""}`;
+  }
+
+  /* The if-then plan as one sentence: "Na mijn koffie, in de keuken: Push-ups. Minimaal: 5 push-ups" */
+  function planText(h) {
+    const p = plan(h);
+    if (!p.cue && !p.where) return "";
+    const up = x => x.charAt(0).toUpperCase() + x.slice(1), low = x => x.charAt(0).toLowerCase() + x.slice(1);
+    return `${esc(up(p.cue || ANCHOR[p.anchor].t))}${p.where ? ", " + esc(low(p.where)) : ""}: ${esc(h.t.toLowerCase())}`;
+  }
+  function planHtml(h) {
+    const p = plan(h), txt = planText(h);
+    if (!txt) return `<button class="card tap" data-edit style="width:100%;text-align:left;margin-top:16px;display:flex;gap:12px;align-items:center;border-style:dashed">
+      <span style="font-size:22px">🧭</span><span><div style="font-weight:600">Maak een als-dan-plan</div><div class="small muted">Wanneer, waar en wat is de kleinste versie? Dat verdubbelt de kans dat je het doet.</div></span></button>`;
+    return `<div class="card" style="margin-top:16px"><div class="eyebrow">Mijn plan · ${ANCHOR[p.anchor].e} ${ANCHOR[p.anchor].t}${weekly(h) < 7 ? " · " + weekly(h) + "× per week" : ""}</div>
+      <div style="margin-top:6px;font-weight:600">${txt}</div>${p.min ? `<div class="small muted" style="margin-top:4px">Minimaal: ${esc(p.min)}</div>` : ""}</div>`;
   }
 
   function openHabit(id, dayArg) {
@@ -347,6 +479,8 @@
         <div class="row" style="gap:14px;margin-bottom:16px">${ring(h, day)}<div style="flex:1"><h2 style="margin:0">${esc(h.t)}</h2><div class="small muted">${TYPES[h.type].label}${h.type === "check" ? "" : " · doel " + (h.type === "limit" ? "max " : "") + fmt(h, h.target)}</div></div><button class="btn ghost sm" data-edit>Wijzig</button></div>
         <div class="seg" data-day-seg style="margin-bottom:18px"><button class="${day === today() ? "on" : ""}" data-d="${today()}">Vandaag</button><button class="${day === yday ? "on" : ""}" data-d="${yday}">Gisteren</button></div>
         ${ctl}
+        ${statusHtml(h, day)}
+        ${planHtml(h)}
         <label class="lbl">Laatste 7 dagen</label>
         ${historyHtml(h)}
         ${statsHtml(h)}`;
@@ -361,7 +495,7 @@
           const t = e.target;
           const dd = t.closest("[data-d]");
           if (dd) { day = dd.dataset.d; haptic(); Sound.tap(); redraw(); return; }
-          if (t.closest("[data-edit]")) { close(); setTimeout(() => editHabit(h.id), 320); return; }
+          if (t.closest("[data-edit]")) { const toPlan = !!t.closest(".card"); close(); setTimeout(() => editHabit(h.id, null, { focusPlan: toPlan }), 320); return; }
           const add = t.closest("[data-add]");
           if (add) {
             haptic(8); Sound.tap();
@@ -380,6 +514,16 @@
           if (t.closest("[data-now]")) { const d = new Date(); setVal(h, day, d.getHours() * 60 + d.getMinutes()); redraw(); return; }
           if (t.closest("[data-clear]")) { setVal(h, day, null); redraw(); return; }
           if (t.closest("[data-check]")) { toggleCheck(h, day); redraw(); return; }
+          const sb = t.closest("[data-st]");
+          if (sb) {
+            const cur = status(h, day), v = sb.dataset.st;
+            setStatus(h, day, cur && cur.s === v ? null : { s: v });
+            haptic(); Sound.tap();
+            if (v === "min" && !(cur && cur.s === "min")) { Sound.success(); toast(`${h.e} Minimale versie telt. Goed bezig!`); }
+            redraw(); return;
+          }
+          const why = t.closest("[data-why] [data-v]");
+          if (why) { setStatus(h, day, { s: "skip", why: why.dataset.v }); haptic(); Sound.tap(); redraw(); return; }
         });
         wrap.addEventListener("change", e => {
           if (e.target.matches("[data-time]") && e.target.value) {
@@ -392,10 +536,12 @@
   }
 
   /* ---------- editor (new from template / custom / edit existing) ---------- */
-  function editHabit(id, preset) {
+  function editHabit(id, preset, { focusPlan } = {}) {
     const existing = id ? get(id) : null;
     const h = Object.assign({ e: "⭐", t: "", type: "count", target: 10, unit: "", steps: [1] }, preset || {}, existing || {});
     let type = h.type;
+    const p0 = plan(h);
+    let anchor = p0.anchor, perWeek = weekly(h);
     const fieldsHtml = () => {
       if (type === "check") return `<p class="small muted" style="margin-top:14px">Afvinken: gedaan of niet gedaan.</p>`;
       if (type === "time") return `<label class="lbl">Doel: voor dit tijdstip</label><input class="field" type="time" data-target-time value="${fmt({ type: "time" }, h.type === "time" ? h.target : 7 * 60)}">`;
@@ -410,6 +556,19 @@
       <label class="lbl">Soort</label>
       <div class="seg" data-type>${Object.entries(TYPES).map(([k, t]) => `<button data-v="${k}" class="${k === type ? "on" : ""}">${t.label}</button>`).join("")}</div>
       <div data-fields>${fieldsHtml()}</div>
+      <label class="lbl" data-plan-lbl>Als-dan-plan</label>
+      <div class="seg" data-anchor-seg>${ANCHORS.map(a => `<button data-v="${a.id}" class="${a.id === anchor ? "on" : ""}" style="font-size:12px">${a.t}</button>`).join("")}</div>
+      <div class="small muted" style="margin:12px 0 6px">Wanneer: na …</div>
+      <input class="field" data-cue maxlength="60" value="${esc(p0.cue)}" placeholder="bijv. Na mijn koffie">
+      <div class="small muted" style="margin:12px 0 6px">Waar</div>
+      <input class="field" data-where maxlength="40" value="${esc(p0.where)}" placeholder="bijv. In de keuken">
+      <div class="small muted" style="margin:12px 0 6px">Minimale versie</div>
+      <input class="field" data-min maxlength="60" value="${esc(p0.min)}" placeholder="bijv. 5 push-ups">
+      <p class="small muted" style="margin-top:8px">Koppel het aan iets wat je al elke dag doet. De minimale versie is wat je doet op een slechte dag.</p>
+      <div data-weekly-wrap ${type === "limit" ? 'style="display:none"' : ""}>
+        <label class="lbl">Hoe vaak per week</label>
+        <div class="seg" data-weekly>${[2, 3, 4, 5, 6, 7].map(n => `<button data-v="${n}" class="${n === perWeek ? "on" : ""}">${n === 7 ? "Elke dag" : n + "×"}</button>`).join("")}</div>
+      </div>
       <div style="margin-top:22px"><button class="btn" data-save>${existing ? "Opslaan" : "Toevoegen"}</button></div>
       ${existing ? `<div style="margin-top:10px"><button class="btn ghost" data-del style="color:var(--danger)">Verwijderen</button></div>` : ""}`, {
       onMount(sh, close) {
@@ -417,11 +576,21 @@
           const b = e.target.closest("button"); if (!b) return;
           type = b.dataset.v; $$("[data-type] button", sh).forEach(x => x.classList.toggle("on", x === b));
           $("[data-fields]", sh).innerHTML = fieldsHtml(); haptic(); Sound.tap();
+          $("[data-weekly-wrap]", sh).style.display = type === "limit" ? "none" : "";
         });
+        const pickSeg = (sel, cb) => $(sel, sh).addEventListener("click", e => {
+          const b = e.target.closest("button"); if (!b) return;
+          $$(sel + " button", sh).forEach(x => x.classList.toggle("on", x === b)); cb(b.dataset.v); haptic(); Sound.tap();
+        });
+        pickSeg("[data-anchor-seg]", v => { anchor = v; });
+        pickSeg("[data-weekly]", v => { perWeek = +v; });
+        if (focusPlan) setTimeout(() => { $("[data-plan-lbl]", sh).scrollIntoView({ block: "start", behavior: "smooth" }); $("[data-cue]", sh).focus({ preventScroll: true }); }, 450);
         $("[data-save]", sh).addEventListener("click", () => {
           const name = $("[data-name]", sh).value.trim();
           if (!name) { gsap.fromTo($("[data-name]", sh), { x: -8 }, { x: 0, duration: 0.5, ease: "elastic.out(1,0.3)" }); return; }
-          const out = { id: existing ? existing.id : "h" + Date.now(), e: $("[data-emoji]", sh).value.trim() || "⭐", t: name, type, tpl: h.tpl, created: existing ? existing.created : Date.now() };
+          const out = { id: existing ? existing.id : "h" + Date.now(), e: $("[data-emoji]", sh).value.trim() || "⭐", t: name, type, tpl: h.tpl, created: existing ? existing.created : Date.now(),
+            plan: { anchor, cue: $("[data-cue]", sh).value.trim(), where: $("[data-where]", sh).value.trim(), min: $("[data-min]", sh).value.trim() },
+            weekly: type === "limit" ? 7 : perWeek };
           if (type === "time") { const [a, b] = ($("[data-target-time]", sh).value || "07:00").split(":").map(Number); out.target = a * 60 + b; }
           else if (type !== "check") {
             out.target = Math.max(0, parseFloat(String($("[data-target]", sh).value).replace(",", ".")) || 1);
@@ -485,7 +654,7 @@
     const draw = () => S().habits.map(h => {
       const hist = history(h);
       return `<button class="card tap h-manage" data-open="${h.id}" style="width:100%;text-align:left">
-        <div class="row" style="gap:12px">${ring(h)}<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(h.t)}</div><div class="small muted">${TYPES[h.type].label}${h.type === "check" ? "" : " · " + (h.type === "limit" ? "max " : "") + fmt(h, h.target)} · 🔥 ${streak(h)}</div></div></div>
+        <div class="row" style="gap:12px">${ring(h)}<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(h.t)}</div><div class="small muted">${TYPES[h.type].label}${h.type === "check" ? "" : " · " + (h.type === "limit" ? "max " : "") + fmt(h, h.target)} · 🔗 ${lineTxt(h)}</div></div></div>
         <div class="week-dots">${hist.map(d => `<i class="${d.today ? "today" : ""}" style="--p:${d.p};background:${d.over ? "var(--danger)" : d.done ? "var(--ok)" : `rgba(124,92,255,${0.12 + d.p * 0.6})`}"><b>${d.l}</b></i>`).join("")}</div>
       </button>`;
     }).join("") || `<div class="empty">Nog geen gewoontes.</div>`;
@@ -559,5 +728,6 @@
     if (h && h.type !== "check") setVal(h, today(), val(h) + amount, { quiet: true });
   }
 
-  window.Habits = { rollover, addToTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get };
+  window.Habits = { rollover, addToTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get,
+    status, setStatus, shown, weekly, weekDone, atRisk, plan, planText, ANCHORS, SKIP_REASONS };
 })();
