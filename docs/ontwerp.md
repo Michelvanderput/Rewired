@@ -1,6 +1,6 @@
-# Ontwerp: waarom Rewired werkt zoals het werkt
+# Ontwerp: waarom Routini werkt zoals het werkt
 
-Rewired helpt om een compulsief patroon af te bouwen en nieuwe gewoontes op te bouwen. Dit document legt vast
+Routini (Routine + Houdini: ontsnappen aan oude patronen) helpt om een compulsief patroon af te bouwen en nieuwe gewoontes op te bouwen. Dit document legt vast
 welke gedragswetenschap achter de functies zit, zodat nieuwe functies dezelfde lijn volgen.
 
 ## Uitgangspunten

@@ -3,7 +3,7 @@
    Only the error type, a scrubbed message, the stack (script file names + line numbers), app version and
    browser are sent: never journal text, names, habits or anything else from Store. At most 5 per session. */
 (function () {
-  const VERSION = "rewired-v13";
+  const VERSION = "routini-v14";
   let target = null, sent = 0;
   const on = () => !!(target && window.Store && Store.s.settings && Store.s.settings.errors === true);
 
@@ -11,7 +11,7 @@
     try {
       const u = new URL(dsn), project = u.pathname.replace(/\//g, "");
       if (!u.username || !/^\d+$/.test(project)) return null;
-      return { url: `${u.protocol}//${u.host}/api/${project}/envelope/?sentry_key=${u.username}&sentry_version=7&sentry_client=rewired-web/1.0`, dsn: `${u.protocol}//${u.username}@${u.host}/${project}` };
+      return { url: `${u.protocol}//${u.host}/api/${project}/envelope/?sentry_key=${u.username}&sentry_version=7&sentry_client=routini-web/1.0`, dsn: `${u.protocol}//${u.username}@${u.host}/${project}` };
     } catch { return null; }
   }
 

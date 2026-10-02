@@ -27,5 +27,5 @@ test("error reporting is opt-in and scrubbed", async ({ page }) => {
   expect(ev.exception.values[0]).toMatchObject({ type: "TypeError", value: 'kon "…" niet lezen' });
   expect(r.postData()).not.toContain("geheime");
   expect(r.postData()).not.toContain("Michel");
-  expect(ev.release).toMatch(/^rewired-v\d+$/);
+  expect(ev.release).toMatch(/^routini-v\d+$/);
 });

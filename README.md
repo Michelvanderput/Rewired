@@ -1,8 +1,10 @@
-# Rewired
+# Routini
 
-Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herprogrammeren. Geïnspireerd door de app
-[Rewired: Defeat Lust Now](https://apps.apple.com/nl/app/rewired-defeat-lust-now/id6753029718), gebouwd met vanilla JS en
-[GSAP](https://gsap.com) voor de animaties. Geen build-stap, geen account, geen server: al je gegevens blijven in de browser op je iPhone.
+**Routine + Houdini:** ontsnap aan oude patronen en bouw routines die blijven. Een iPhone-webapp (PWA) om compulsief
+gedrag te doorbreken, oorspronkelijk geïnspireerd door de app
+[Rewired: Defeat Lust Now](https://apps.apple.com/nl/app/rewired-defeat-lust-now/id6753029718) en uitgebreid met
+gedragswetenschap voor gewoontevorming (zie [`docs/ontwerp.md`](docs/ontwerp.md)). Gebouwd met vanilla JS en
+[GSAP](https://gsap.com), zonder build-stap. Alles staat op je iPhone; een account met end-to-end versleutelde sync is optioneel.
 
 ## Features
 
@@ -25,6 +27,11 @@ Een iPhone-webapp (PWA) om compulsief gedrag te doorbreken en je brein te herpro
 | Overig | Dagelijkse check-in (stemming/energie), dagboek met prompts, mijlpaal-vieringen, back-up export/import, voortgang delen |
 | Account & cloud-opslag | Gebruikersnaam + wachtwoord, alles **end-to-end versleuteld** (AES-GCM) vóór het de telefoon verlaat, sync tussen apparaten met samenvoegen, herstellen op een nieuwe telefoon |
 | Ochtend-recap | Elke ochtend (vanaf 04:00, eerste keer openen) een overzicht van gisteren: score, wat ging goed, wat kan beter, gerichte tips en een focus voor vandaag |
+| Als-dan-plan | Per gewoonte: moment van de dag, "na …"-anker, plek en minimale versie. Vandaag-scherm gegroepeerd per moment |
+| Minimaal / overslaan | Minimale versie telt als komen opdagen, overslaan met reden; weekdoel (2–7×) en "nooit twee keer missen" |
+| Automatisme | Elke 14 dagen 4 vragen (SRBAI); bij ≥ 5,5 studeert een gewoonte af naar "Automatisch". Herinneringen bouwen af: elke dag → om de dag → alleen na een misser → uit |
+| Risicomomenten | Drang-log met plek en gevoel; na 10 logs je top-3 tijdvensters, een waarschuwing op Home en een melding 15 min vooraf |
+| Weekreflectie | Elke zondag 3 vragen, met de feiten van je week en je voornemen van vorige week |
 | Pushmeldingen | Ochtend-recap (score + samenvatting), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
 
 Niet overgenomen, omdat daar een server met accounts voor nodig is: community-forum en AI-coach.
@@ -36,7 +43,7 @@ De app moet via **https** bereikbaar zijn. De makkelijkste manier is GitHub Page
 1. GitHub → repo **Settings → Pages** → Source: *Deploy from a branch* → kies de branch en `/ (root)`.
 2. Open de URL (bijv. `https://<gebruiker>.github.io/rewired/`) in **Safari** op je iPhone.
 3. Tik op **Deel** (vierkant met pijl) → **Zet op beginscherm**.
-4. Open Rewired vanaf je beginscherm: fullscreen, zonder adresbalk en offline beschikbaar.
+4. Open Routini vanaf je beginscherm: fullscreen, zonder adresbalk en offline beschikbaar.
 
 Lokaal testen: `python3 -m http.server 8080` en open `http://localhost:8080`.
 
@@ -102,4 +109,4 @@ vercel.json           Dagelijkse cron + headers
 - **Haptiek:** Safari op iOS ondersteunt `navigator.vibrate` niet. De app gebruikt de iOS 18-switch als workaround voor een lichte tik.
 - **Geluid:** iOS start audio pas na een tik. Zet je telefoon niet op stil als je de tonen wilt horen. Gebruik een koptelefoon voor binaurale tonen.
 - **Lichttherapie:** de kleuren wisselen langzaam (geen stroboscoop), maar bij fotogevoelige epilepsie kun je beter alleen Rood, Blauw of Aurora gebruiken.
-- Rewired is een zelfhulp-tool en vervangt geen professionele hulp. Bij een crisis: 113 Zelfmoordpreventie (0800-0113).
+- Routini is een zelfhulp-tool en vervangt geen professionele hulp. Bij een crisis: 113 Zelfmoordpreventie (0800-0113).

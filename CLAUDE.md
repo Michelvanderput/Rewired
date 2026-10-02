@@ -1,6 +1,6 @@
-# Rewired — notes for working on this repo
+# Routini — notes for working on this repo
 
-Dutch-language iPhone PWA (installed to the home screen) with a small Vercel backend. Deployed from this branch to
+Routini (formerly Rewired; Routine + Houdini) is a Dutch-language iPhone PWA (installed to the home screen) with a small Vercel backend. Deployed from this branch to
 https://rewired-one.vercel.app on every push. The design principles behind the features are in `docs/ontwerp.md`;
 read it before adding or changing behaviour (plans, reminders, streaks, rewards, wording).
 
@@ -27,6 +27,8 @@ read it before adding or changing behaviour (plans, reminders, streaks, rewards,
 - Respect reduced motion: check `FX.calm()` before decorative or endless animations.
 - After changing any file in the app shell, bump `VERSION` in `sw.js` (and the matching one in `js/monitor.js`),
   and add new files to the `SHELL` list in `sw.js` and a `<script>` tag in `index.html`.
+- Storage keys (`rewired.v1`, `rewired.session`, …) and Redis keys keep the old name on purpose: renaming them would
+  wipe existing users' data.
 - Secrets (VAPID private key, CRON_SECRET, Upstash token, SENTRY_DSN) live only in Vercel env vars.
 - UI copy is Dutch, friendly and non-judgemental (see `docs/ontwerp.md` → Taal en feedback).
 

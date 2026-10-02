@@ -50,7 +50,7 @@ function config() {
   if (!process.env.VAPID_PRIVATE_KEY) missing.push("VAPID_PRIVATE_KEY");
   if (!missing.length) {
     webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT || "mailto:rewired@example.com",
+      process.env.VAPID_SUBJECT || "mailto:routini@example.com",
       process.env.VAPID_PUBLIC_KEY,
       process.env.VAPID_PRIVATE_KEY
     );
@@ -153,7 +153,7 @@ function message(id, rec, now = Date.now(), slotDay = null) {
       url: "./?open=home", tag: "night"
     };
   }
-  return { title: "Rewired", body: "Test gelukt! Je meldingen werken. 💪", url: "./", tag: "test" };
+  return { title: "Routini", body: "Test gelukt! Je meldingen werken. 💪", url: "./", tag: "test" };
 }
 
 async function send(rec, payload) {
@@ -219,7 +219,7 @@ async function report(e, route) {
   try {
     await fetch(t.url, {
       method: "POST", body, signal: AbortSignal.timeout(2000),
-      headers: { "Content-Type": "application/x-sentry-envelope", "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${t.key}, sentry_client=rewired-api/1.0` }
+      headers: { "Content-Type": "application/x-sentry-envelope", "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${t.key}, sentry_client=routini-api/1.0` }
     });
   } catch {}
 }

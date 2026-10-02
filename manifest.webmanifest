@@ -1,7 +1,7 @@
 {
-  "name": "Rewired – Herprogrammeer je brein",
-  "short_name": "Rewired",
-  "description": "Streak tracker, lichttherapie, ademhaling, meditatie en dagelijkse dopamine reset.",
+  "name": "Routini – Ontsnap aan oude patronen",
+  "short_name": "Routini",
+  "description": "Doorbreek oude patronen en bouw routines die blijven: streak, gewoontes met als-dan-plan, noodmodus, ademhaling en lichttherapie.",
   "lang": "nl",
   "start_url": "./",
   "scope": "./",

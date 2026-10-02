@@ -1,8 +1,8 @@
 {
-  "name": "rewired",
+  "name": "routini",
   "version": "1.1.0",
   "private": true,
-  "description": "Rewired PWA with web push reminders",
+  "description": "Routini PWA with web push reminders",
   "engines": {
     "node": ">=18"
   },

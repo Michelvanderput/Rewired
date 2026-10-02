@@ -189,7 +189,7 @@
         <button class="small danger-text" data-stop style="margin-top:14px">Stoppen met app-tracking</button>` : `<p class="small muted" style="margin-top:14px">Kies hierboven minstens één app.</p>`}`;
     };
     sheet(`<h2>App-tracking</h2>
-      <p class="sub">Met iOS Opdrachten telt Rewired elke keer dat je een app opent. Je krijgt direct een melding ("6e keer vandaag, waarom open je het nu?") en ziet hier hoeveel je ze gebruikt.</p>
+      <p class="sub">Met iOS Opdrachten telt Routini elke keer dat je een app opent. Je krijgt direct een melding ("6e keer vandaag, waarom open je het nu?") en ziet hier hoeveel je ze gebruikt.</p>
       <div data-body>${draw()}</div>`, {
       onClose() { pushConfig(); if (window.App) App.refresh(false); },
       onMount(sh) {

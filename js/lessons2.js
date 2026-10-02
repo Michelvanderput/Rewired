@@ -160,7 +160,7 @@
 
     L("env-phone", "Omgeving", 3, "Maak je telefoon saai",
       `<p>Je telefoon is ontworpen om je aandacht vast te houden. Een paar instellingen maken hem een stuk minder verslavend:</p>
-<ul><li><b>Grijstinten</b> (Instellingen → Toegankelijkheid → Weergave → Kleurfilters): kleurloze apps zijn minder aantrekkelijk</li><li><b>Meldingen uit</b> voor alles behalve mensen</li><li><b>Beginscherm leeg:</b> alleen tools (kaart, agenda, Rewired), social media in een map op de laatste pagina</li><li><b>Focus-modus</b> 's avonds en tijdens werk</li><li><b>Uitloggen</b> na elk gebruik van social media</li></ul>`,
+<ul><li><b>Grijstinten</b> (Instellingen → Toegankelijkheid → Weergave → Kleurfilters): kleurloze apps zijn minder aantrekkelijk</li><li><b>Meldingen uit</b> voor alles behalve mensen</li><li><b>Beginscherm leeg:</b> alleen tools (kaart, agenda, Routini), social media in een map op de laatste pagina</li><li><b>Focus-modus</b> 's avonds en tijdens werk</li><li><b>Uitloggen</b> na elk gebruik van social media</li></ul>`,
       "Een saaie telefoon trekt minder. Kleur, meldingen en gemak zijn haakjes.",
       "Zet vandaag grijstinten aan en verplaats social media naar de laatste pagina.",
       Q("Welke instelling maakt apps direct minder aantrekkelijk?", ["Helderheid omhoog", "Grijstinten", "Geluid aan"], 1, "Kleur is een belangrijk haakje in app-ontwerp.")),

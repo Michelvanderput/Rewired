@@ -180,10 +180,10 @@
 
   function cardHtml() {
     const st = status(), p = prefs();
-    if (st === "install") return `<div class="card"><div style="font-weight:600">🔔 Meldingen</div><p class="small muted" style="margin-top:6px">Op de iPhone werken meldingen alleen als Rewired op je <b style="color:#fff">beginscherm</b> staat. Open in Safari → <b style="color:#fff">Deel</b> → <b style="color:#fff">Zet op beginscherm</b>, en open de app daarna via het icoon.</p></div>`;
+    if (st === "install") return `<div class="card"><div style="font-weight:600">🔔 Meldingen</div><p class="small muted" style="margin-top:6px">Op de iPhone werken meldingen alleen als Routini op je <b style="color:#fff">beginscherm</b> staat. Open in Safari → <b style="color:#fff">Deel</b> → <b style="color:#fff">Zet op beginscherm</b>, en open de app daarna via het icoon.</p></div>`;
     if (st === "ios-old") return `<div class="card"><div style="font-weight:600">🔔 Meldingen</div><p class="small muted" style="margin-top:6px">Je iOS-versie ondersteunt geen webmeldingen. Update naar iOS 16.4 of nieuwer.</p></div>`;
     if (st === "unsupported") return `<div class="card"><div style="font-weight:600">🔔 Meldingen</div><p class="small muted" style="margin-top:6px">Deze browser ondersteunt geen pushmeldingen.</p></div>`;
-    if (st === "denied") return `<div class="card"><div style="font-weight:600">🔔 Meldingen geblokkeerd</div><p class="small muted" style="margin-top:6px">Zet ze aan via iPhone <b style="color:#fff">Instellingen → Meldingen → Rewired</b> en kom dan hier terug.</p></div>`;
+    if (st === "denied") return `<div class="card"><div style="font-weight:600">🔔 Meldingen geblokkeerd</div><p class="small muted" style="margin-top:6px">Zet ze aan via iPhone <b style="color:#fff">Instellingen → Meldingen → Routini</b> en kom dan hier terug.</p></div>`;
 
     const on = st === "on";
     return `

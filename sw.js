@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v13";
+const VERSION = "routini-v14";
 const SHELL = [
   "./",
   "index.html",
@@ -79,14 +79,14 @@ self.addEventListener("fetch", e => {
 self.addEventListener("push", e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data && e.data.text() }; }
-  const title = data.title || "Rewired";
+  const title = data.title || "Routini";
   e.waitUntil(Promise.all([
     self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage({ type: "push", title, body: data.body || "" }))),
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "icons/icon-192.png",
       badge: "icons/icon-192.png",
-      tag: data.tag || "rewired",
+      tag: data.tag || "routini",
       data: { url: data.url || "./" }
     }),
     self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null

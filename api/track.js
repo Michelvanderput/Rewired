@@ -2,8 +2,8 @@
 
    GET  /api/track?t=<token>&app=instagram   ← called by the Shortcut when the app opens.
         Logs the open and answers with a short text the Shortcut shows as a notification.
-   GET  /api/track?t=<token>                 ← the Rewired app fetches the events (last 15 days).
-   POST /api/track { t, tz, apps, perOpen }  ← the Rewired app stores tz + per-app limits.
+   GET  /api/track?t=<token>                 ← the Routini app fetches the events (last 15 days).
+   POST /api/track { t, tz, apps, perOpen }  ← the Routini app stores tz + per-app limits.
    DELETE /api/track { t }                   ← remove everything for this token.
 
    The token is a long random secret created in the app; it is the only "login" for these endpoints. */
@@ -59,14 +59,14 @@ module.exports = async (req, res) => {
 
     if (req.method !== "GET") return json(res, 405, { error: "method" });
     const t = url.searchParams.get("t");
-    if (!tokOk(t)) return text(res, 401, "Rewired: ongeldige link. Kopieer hem opnieuw uit de app.");
+    if (!tokOk(t)) return text(res, 401, "Routini: ongeldige link. Kopieer hem opnieuw uit de app.");
     const h = hash(t);
     const raw = await redis("GET", "track:cfg:" + h);
-    if (!raw) return text(res, 404, "Rewired: tracking is niet (meer) ingesteld. Open de app.");
+    if (!raw) return text(res, 404, "Routini: tracking is niet (meer) ingesteld. Open de app.");
     const cfg = JSON.parse(raw);
     const app = (url.searchParams.get("app") || "").toLowerCase();
 
-    // The Rewired app pulls its events
+    // The Routini app pulls its events
     if (!app) {
       const since = Date.now() - 15 * DAY;
       const ev = ((await redis("LRANGE", "track:ev:" + h, 0, -1)) || []).map(x => JSON.parse(x)).filter(e => e.ts >= since);
@@ -74,8 +74,8 @@ module.exports = async (req, res) => {
     }
 
     // Called from the Shortcut
-    if (!appOk(app)) return text(res, 400, "Rewired: onbekende app-naam in de link.");
-    if (!(await allow("trk:" + h, 800, 86400))) return text(res, 429, "Rewired: te veel meldingen vandaag.");
+    if (!appOk(app)) return text(res, 400, "Routini: onbekende app-naam in de link.");
+    if (!(await allow("trk:" + h, 800, 86400))) return text(res, 429, "Routini: te veel meldingen vandaag.");
     const now = Date.now();
     await redis("RPUSH", "track:ev:" + h, JSON.stringify({ ts: now, app }));
     await redis("LTRIM", "track:ev:" + h, -KEEP, -1);

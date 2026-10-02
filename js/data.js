@@ -9,7 +9,7 @@ window.DATA = {
     { d: 14, t: "2 weken", s: "Nieuwe routine", e: "🧠" },
     { d: 30, t: "30 dagen", s: "Een maand vrij", e: "🛡️" },
     { d: 60, t: "60 dagen", s: "Diepe verandering", e: "💎" },
-    { d: 90, t: "90 dagen", s: "Rewired", e: "👑" },
+    { d: 90, t: "90 dagen", s: "Ontsnapt", e: "👑" },
     { d: 180, t: "180 dagen", s: "Halfjaar", e: "🚀" },
     { d: 365, t: "1 jaar", s: "Legende", e: "🏆" }
   ],
@@ -51,16 +51,16 @@ window.DATA = {
     ["Wie anderen overwint is sterk. Wie zichzelf overwint is machtig.", "Lao Tzu"],
     ["We lijden vaker in onze verbeelding dan in de werkelijkheid.", "Seneca"],
     ["Een drang is een golf. Je hoeft er niet op te surfen, alleen te wachten tot hij breekt.", "Urge surfing"],
-    ["Je hoeft niet perfect te zijn. Je moet alleen vandaag winnen.", "Rewired"],
+    ["Je hoeft niet perfect te zijn. Je moet alleen vandaag winnen.", "Routini"],
     ["Het brein verandert door wat je herhaalt.", "Neuroplasticiteit"],
     ["Succes is de som van kleine inspanningen, dag in dag uit herhaald.", "Robert Collier"],
     ["De pijn van discipline weegt minder dan de pijn van spijt.", "Jim Rohn"],
     ["Je bent niet je gedachten. Je bent degene die ze opmerkt.", "Mindfulness"],
-    ["Elke keer dat je nee zegt, wordt het pad makkelijker.", "Rewired"],
+    ["Elke keer dat je nee zegt, wordt het pad makkelijker.", "Routini"],
     ["Beheers jezelf, of iets anders zal jou beheersen.", "Stoïcijnse wijsheid"],
     ["Val zeven keer, sta acht keer op.", "Japans spreekwoord"],
     ["Wat je voedt groeit. Wat je verhongert sterft.", "Onbekend"],
-    ["Rust komt niet door de drang te volgen, maar door hem voorbij te laten gaan.", "Rewired"]
+    ["Rust komt niet door de drang te volgen, maar door hem voorbij te laten gaan.", "Routini"]
   ],
 
   lightModes: [

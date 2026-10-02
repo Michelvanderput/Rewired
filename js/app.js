@@ -1,4 +1,4 @@
-/* Rewired – main app: onboarding, tabs, views, sheets */
+/* Routini – main app: onboarding, tabs, views, sheets */
 (function () {
   const { $, $$, esc, haptic, toast, confetti, countUp, staggerIn, sheet, fullscreen, fmtDur, relTime, checkIcon } = FX;
   const S = () => Store.s;
@@ -260,7 +260,7 @@
       <header class="page-head" data-anim><div><div class="eyebrow">Jij</div><h1>Profiel</h1></div></header>
       <div class="card" data-anim style="text-align:center;padding:26px 18px">
         <div style="width:84px;height:84px;border-radius:50%;margin:0 auto 12px;background:var(--grad);display:grid;place-items:center;font-family:var(--display);font-size:36px;font-weight:700" data-avatar>${esc((s.name || "R")[0].toUpperCase())}</div>
-        <h2 style="font-size:24px">${esc(s.name || "Rewired")}</h2>
+        <h2 style="font-size:24px">${esc(s.name || "Routini")}</h2>
         <p class="small muted" style="margin-top:4px">Gestart op ${new Date(s.firstStart || s.startDate).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</p>
         <div class="grid3" style="margin-top:18px">
           <div><div style="font-family:var(--display);font-size:22px;font-weight:700">${Store.streakDays()}</div><div class="small muted">Streak</div></div>
@@ -274,7 +274,7 @@
 
       ${!standalone ? `<div class="card" data-anim style="margin-top:12px;border-color:rgba(34,211,238,.4)">
         <div style="font-weight:600">📲 Installeer op je iPhone</div>
-        <p class="small muted" style="margin-top:6px">Open in Safari, tik op <b style="color:#fff">Deel</b> <span style="display:inline-block;vertical-align:-3px">⬆️</span> en kies <b style="color:#fff">Zet op beginscherm</b>. Dan werkt Rewired als een echte app, fullscreen en offline.</p>
+        <p class="small muted" style="margin-top:6px">Open in Safari, tik op <b style="color:#fff">Deel</b> <span style="display:inline-block;vertical-align:-3px">⬆️</span> en kies <b style="color:#fff">Zet op beginscherm</b>. Dan werkt Routini als een echte app, fullscreen en offline.</p>
       </div>` : ""}
 
       <div class="section-title" data-anim><h3>Meldingen</h3></div>
@@ -304,7 +304,7 @@
         <button class="list-item" style="width:100%;text-align:left" data-action="wipe"><span class="li-ico">🗑️</span><span class="li-body"><div class="li-title danger-text">Alles wissen op deze telefoon</div><div class="li-sub">Begin opnieuw${Sync.user ? " · je wordt uitgelogd, cloud-kopie blijft" : ""}</div></span></button>
       </div>
 
-      <p class="small muted" style="text-align:center;margin-top:26px;line-height:1.6">Al je gegevens blijven privé op dit apparaat.<br>Rewired is een zelfhulp-tool en vervangt geen professionele hulp.<br>Hulp nodig? Bel <b>113</b> (0800-0113) bij crisis.</p>
+      <p class="small muted" style="text-align:center;margin-top:26px;line-height:1.6">Al je gegevens blijven privé op dit apparaat.<br>Routini is een zelfhulp-tool en vervangt geen professionele hulp.<br>Hulp nodig? Bel <b>113</b> (0800-0113) bij crisis.</p>
     `;
   }
 
@@ -684,9 +684,9 @@
 
   async function exportData() {
     const json = Store.export();
-    const file = new File([json], `rewired-backup-${Store.dayKey()}.json`, { type: "application/json" });
+    const file = new File([json], `routini-backup-${Store.dayKey()}.json`, { type: "application/json" });
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Rewired back-up" }); return; }
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Routini back-up" }); return; }
     } catch (e) { if (e.name === "AbortError") return; }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(file); a.download = file.name; a.click();
@@ -695,7 +695,7 @@
 
   async function shareProgress() {
     const d = Store.streakDays();
-    const text = `Ik ben ${d} ${d === 1 ? "dag" : "dagen"} vrij en mijn brein is ${Store.rewirePct().toFixed(0)}% herbedraad met Rewired. 🧠💪`;
+    const text = `Ik ben ${d} ${d === 1 ? "dag" : "dagen"} vrij en mijn brein is ${Store.rewirePct().toFixed(0)}% herbedraad met Routini. 🧠💪`;
     try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
     try { await navigator.clipboard.writeText(text); toast("Gekopieerd naar klembord"); } catch { toast(text); }
   }
@@ -767,15 +767,19 @@
     const logo = `<svg class="big-logo" viewBox="0 0 120 120" data-logo>
       <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>
       <circle cx="60" cy="60" r="54" fill="none" stroke="url(#lg)" stroke-width="3" opacity=".35"/>
-      <path data-path d="M28 70c8-22 18-30 30-18s22 6 34-20" fill="none" stroke="url(#lg)" stroke-width="7" stroke-linecap="round"/>
-      <circle cx="28" cy="70" r="6" fill="#22d3ee"/><circle cx="92" cy="32" r="6" fill="#7c5cff"/>
+      <path data-shackle d="M47 58V43a13 13 0 0 1 26 0v15" fill="none" stroke="url(#lg)" stroke-width="6.5" stroke-linecap="round"/>
+      <rect x="34" y="57" width="52" height="40" rx="11" fill="#0e0b24" stroke="url(#lg)" stroke-width="6.5"/>
+      <circle cx="60" cy="73" r="4.6" fill="#22d3ee"/><path d="M60 76v8" stroke="#22d3ee" stroke-width="3.6" stroke-linecap="round"/>
+      <path data-spark d="M88 22l2.4 6.6 6.6 2.4-6.6 2.4L88 40l-2.4-6.6L79 31l6.6-2.4z" fill="#f4f1ff"/>
+      <path data-spark d="M97 46l1.2 3.3 3.3 1.2-3.3 1.2L97 55l-1.2-3.3-3.3-1.2 3.3-1.2z" fill="#22d3ee"/>
     </svg>`;
 
     const steps = [
       {
         html: () => `<div style="text-align:center;padding-top:30px">${logo}
-          <h1>Herprogrammeer<br><span class="grad-text">je brein.</span></h1>
-          <p class="lead">Gebaseerd op neurowetenschap. Streak tracking, lichttherapie, ademwerk en een dagelijkse dopamine reset. Alles 100% privé op je iPhone.</p>
+          <div class="wordmark">Routini</div>
+          <h1>Ontsnap aan<br><span class="grad-text">oude patronen.</span></h1>
+          <p class="lead">Kom los van wat je niet meer wilt en bouw routines die blijven. Streak, gewoontes met een als-dan-plan, noodmodus, ademwerk en lichttherapie. Alles privé op je iPhone.</p>
           <button class="link" data-have-account style="margin-top:22px;color:var(--accent2);font-weight:600;font-size:15px">Ik heb al een account →</button></div>`,
         btn: "Begin mijn reis",
         mount: () => {
@@ -786,9 +790,19 @@
               gsap.to(el, { opacity: 0, duration: 0.5, onComplete: () => { el.remove(); boot(); } });
             } });
           });
-          const p = $("[data-path]", body), len = p.getTotalLength();
-          gsap.fromTo(p, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 1.6, ease: "power2.inOut", delay: 0.3 });
-          gsap.from("[data-logo]", { scale: 0.6, rotation: -20, duration: 1.4, ease: "elastic.out(1,0.6)" });
+          // the escape: the lock appears, then the shackle springs open and a sparkle pops
+          const shackle = $("[data-shackle]", body), sparks = $$("[data-spark]", body);
+          if (FX.calm()) {
+            gsap.set(shackle, { rotation: -22, y: -6, svgOrigin: "47 58" });
+            gsap.from("[data-logo]", { opacity: 0, duration: 0.6 });
+          } else {
+            gsap.timeline()
+              .from("[data-logo]", { scale: 0.6, opacity: 0, duration: 0.9, ease: "back.out(1.8)" })
+              .to(shackle, { y: -6, duration: 0.25, ease: "power2.out", svgOrigin: "47 58" }, "+=0.35")
+              .to(shackle, { rotation: -22, duration: 0.7, ease: "elastic.out(1,0.45)", svgOrigin: "47 58" }, "<0.1")
+              .from(sparks, { scale: 0, rotation: -90, transformOrigin: "50% 50%", duration: 0.6, stagger: 0.12, ease: "back.out(3)" }, "<0.15")
+              .from(".wordmark", { y: 10, opacity: 0, duration: 0.5, ease: "power3.out" }, "<");
+          }
         }
       },
       {
@@ -838,7 +852,7 @@
               ${[["🔥", "Dagelijkse streak & brein-meter"], ["💡", "Lichttherapie bij hoge drang"], ["🌬️", "Ademwerk & meditatie"], ["⚡", "Dopamine Reset routine"], ["🚨", "Noodmodus met 1 tik"]].map(([e, t]) => `<div class="row" style="padding:10px 0"><span style="font-size:22px">${e}</span><span style="font-weight:500">${t}</span></div>`).join("")}
             </div></div>`;
         },
-        btn: "Start Rewired",
+        btn: "Start Routini",
         mount: () => {
           gsap.from("[data-date]", { scale: 0.5, opacity: 0, duration: 1, ease: "elastic.out(1,0.6)", delay: 0.3 });
           gsap.from("[data-plan] .row", { x: -30, opacity: 0, stagger: 0.1, delay: 0.6, duration: 0.6, ease: "power3.out" });
