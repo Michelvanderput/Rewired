@@ -1,6 +1,6 @@
 /* Rewired – main app: onboarding, tabs, views, sheets */
 (function () {
-  const { $, $$, esc, haptic, toast, confetti, countUp, staggerIn, sheet, fullscreen, fmtDur, relTime, checkIcon, closeIcon } = FX;
+  const { $, $$, esc, haptic, toast, confetti, countUp, staggerIn, sheet, fullscreen, fmtDur, relTime, checkIcon } = FX;
   const S = () => Store.s;
   const DAY = Store.DAY;
   let tab = "home";
@@ -283,6 +283,8 @@
         <div class="list-item"><span class="li-body"><div class="li-title">Naam</div></span><input class="field" style="width:55%;padding:10px 12px" data-name value="${esc(s.name)}" placeholder="Je naam"></div>
         ${toggle("sound", "Geluid", "UI-geluiden en ambient audio")}
         ${toggle("haptics", "Haptische feedback", "Trillingen bij acties")}
+        ${window.Monitor && Monitor.available() ? toggle("errors", "Foutmeldingen delen", "Stuurt bij een crash alleen de technische foutmelding mee (nooit je dagboek, naam of gewoontes), zodat bugs opgelost kunnen worden") : ""}
+        ${toggle("calm", "Minder beweging", "Rustige overgangen, geen confetti of zwevende achtergrond. Staat ook aan als iOS 'Verminder beweging' aan staat")}
         <button class="list-item" style="width:100%;text-align:left" data-action="editStart"><span class="li-body"><div class="li-title">Streak startmoment</div><div class="li-sub">${relTime(s.startDate)}</div></span><span class="muted">›</span></button>
       </div>
 
@@ -331,9 +333,11 @@
       const ring = $("[data-ring]", v);
       gsap.to(ring, { strokeDashoffset: 741.4 * (1 - +ring.dataset.pct), duration: animate ? 1.8 : 0, ease: "power3.out", delay: 0.2 });
       const orb = $("[data-orb]", v);
-      gsap.to(orb, { scale: 1.05, duration: 3, repeat: -1, yoyo: true, ease: "sine.inOut" });
-      gsap.to(orb, { rotation: 360, duration: 30, repeat: -1, ease: "none" });
-      if (animate) gsap.from($("[data-days]", v), { scale: 0.4, opacity: 0, duration: 1.1, ease: "elastic.out(1,0.6)", delay: 0.2 });
+      if (!FX.calm()) {
+        gsap.to(orb, { scale: 1.05, duration: 3, repeat: -1, yoyo: true, ease: "sine.inOut" });
+        gsap.to(orb, { rotation: 360, duration: 30, repeat: -1, ease: "none" });
+      }
+      if (animate && !FX.calm()) gsap.from($("[data-days]", v), { scale: 0.4, opacity: 0, duration: 1.1, ease: "elastic.out(1,0.6)", delay: 0.2 });
       const pct = Store.rewirePct();
       countUp($("[data-rewire]", v), pct, { decimals: 1, suffix: "%", duration: animate ? 1.6 : 0.01 });
       gsap.to($("[data-rewire-bar]", v), { width: pct + "%", duration: animate ? 1.6 : 0, ease: "power3.out", delay: 0.2 });
@@ -673,8 +677,8 @@
   async function shareProgress() {
     const d = Store.streakDays();
     const text = `Ik ben ${d} ${d === 1 ? "dag" : "dagen"} vrij en mijn brein is ${Store.rewirePct().toFixed(0)}% herbedraad met Rewired. 🧠💪`;
-    try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { return; }
-    try { await navigator.clipboard.writeText(text); toast("Gekopieerd naar klembord"); } catch (e) { toast(text); }
+    try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
+    try { await navigator.clipboard.writeText(text); toast("Gekopieerd naar klembord"); } catch { toast(text); }
   }
 
   function wipe() {
@@ -715,7 +719,8 @@
       <div class="fs-bottom"><button class="btn" data-close>Doorgaan</button></div>`, {
       bg: "radial-gradient(circle at 50% 40%, #241a5e, #05050a 70%)",
       onMount(el) {
-        gsap.from($("[data-b]", el), { scale: 0, rotation: -180, duration: 1.2, ease: "elastic.out(1,0.5)", delay: 0.2 });
+        if (FX.calm()) gsap.from($("[data-b]", el), { opacity: 0, duration: 0.6, delay: 0.2 });
+        else gsap.from($("[data-b]", el), { scale: 0, rotation: -180, duration: 1.2, ease: "elastic.out(1,0.5)", delay: 0.2 });
         gsap.from($$("[data-t]", el), { y: 30, opacity: 0, stagger: 0.15, duration: 0.7, delay: 0.6, ease: "power3.out" });
         setTimeout(() => { confetti(120); Sound.success(); haptic([20, 50, 20, 50, 40]); }, 500);
       }
@@ -935,6 +940,7 @@
       if (st) {
         const k = st.dataset.setting; S().settings[k] = !S().settings[k]; Store.save();
         if (S().settings[k]) { haptic(); Sound.tap(); }
+        if (k === "calm") FX.ambientBg();
         render(false);
       }
     });
@@ -972,7 +978,7 @@
     moveIndicator(true);
     gsap.from("#tabbar", { y: 120, duration: 0.9, ease: "expo.out", delay: 0.2 });
     gsap.from("#panicBtn", { scale: 0, rotation: -90, duration: 0.9, ease: "back.out(2)", delay: 0.5 });
-    gsap.to(".panic-ring", { scale: 1.35, opacity: 0, duration: 1.8, repeat: -1, ease: "power2.out" });
+    FX.ambientBg();
     startTicker();
     setTimeout(checkMilestone, 1200);
     setTimeout(() => Recap.maybeAuto(), 2400);

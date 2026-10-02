@@ -3,7 +3,7 @@
    authKey goes to the server (which hashes it again), encKey never leaves this device.
    The state is encrypted with AES-GCM before upload, so the server only stores ciphertext. */
 (function () {
-  const { $, $$, esc, haptic, toast, sheet } = FX;
+  const { $, esc, haptic, toast, sheet } = FX;
   const SESSION = "rewired.session";
   const ITER = 600000;
   const enc = new TextEncoder(), dec = new TextDecoder();
@@ -13,8 +13,8 @@
 
   /* ---------- session (kept on this device only) ---------- */
   let sess = null;
-  try { sess = JSON.parse(localStorage.getItem(SESSION) || "null"); } catch (e) {}
-  const saveSess = () => { try { sess ? localStorage.setItem(SESSION, JSON.stringify(sess)) : localStorage.removeItem(SESSION); } catch (e) {} };
+  try { sess = JSON.parse(localStorage.getItem(SESSION) || "null"); } catch {}
+  const saveSess = () => { try { sess ? localStorage.setItem(SESSION, JSON.stringify(sess)) : localStorage.removeItem(SESSION); } catch {} };
 
   /* ---------- crypto ---------- */
   async function derive(password, saltB64) {
@@ -39,7 +39,7 @@
     const headers = { "Content-Type": "application/json" };
     if (auth && sess) headers.Authorization = "Bearer " + sess.token;
     const r = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
-    let data = {}; try { data = await r.json(); } catch (e) {}
+    let data = {}; try { data = await r.json(); } catch {}
     if (r.status === 401 && auth && sess && path !== "/api/auth") { expired(); }
     return { status: r.status, data };
   }
@@ -121,7 +121,7 @@
           if (put.status !== 409) return false; // 409: another device saved first → loop and merge again
         }
         return false;
-      } catch (e) {
+      } catch {
         return false;
       } finally {
         busy = null;

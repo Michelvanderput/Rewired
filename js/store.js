@@ -32,7 +32,7 @@
   try {
     const raw = localStorage.getItem(KEY);
     state = raw ? Object.assign(defaults(), JSON.parse(raw)) : defaults();
-  } catch (e) {
+  } catch {
     state = defaults();
   }
 
@@ -47,12 +47,12 @@
     dayKey,
     save() {
       state.updatedAt = Date.now();
-      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* storage full or blocked */ }
     },
     /* replace the whole state (used by cloud sync) without bumping updatedAt */
     replace(next) {
       state = Object.assign(defaults(), next);
-      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
     },
     set(patch) { Object.assign(state, patch); this.save(); },
     reset() { state = defaults(); this.save(); },

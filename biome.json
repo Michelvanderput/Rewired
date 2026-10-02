@@ -1,0 +1,60 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!js/vendor",
+			"!node_modules",
+			"!test-results",
+			"!playwright-report"
+		]
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"assist": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"useTemplate": "off",
+				"noDescendingSpecificity": "off",
+				"useNodejsImportProtocol": "off"
+			},
+			"complexity": {
+				"useOptionalChain": "off",
+				"useArrowFunction": "off",
+				"noCommaOperator": "off",
+				"noImportantStyles": "off"
+			},
+			"suspicious": {
+				"useIterableCallbackReturn": "off",
+				"noAssignInExpressions": "off"
+			}
+		}
+	},
+	"javascript": {
+		"globals": [
+			"gsap",
+			"Store",
+			"FX",
+			"Sound",
+			"Push",
+			"Sync",
+			"Habits",
+			"Recap",
+			"Rewards",
+			"AppTrack",
+			"Learn",
+			"Tools",
+			"App",
+			"DATA",
+			"LESSONS",
+			"LESSONS2",
+			"Monitor"
+		]
+	}
+}

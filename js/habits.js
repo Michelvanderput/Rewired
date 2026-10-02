@@ -365,9 +365,7 @@
           const add = t.closest("[data-add]");
           if (add) {
             haptic(8); Sound.tap();
-            const before = h.type === "timer" ? val(h, day) : val(h, day);
-            setVal(h, day, before + +add.dataset.add);
-            const big = $("[data-big]", wrap);
+            setVal(h, day, val(h, day) + +add.dataset.add);
             redraw();
             const nb = $("[data-big]", wrap) || $(`[data-h-big]`, wrap);
             if (nb) gsap.fromTo(nb, { scale: 1.12 }, { scale: 1, duration: 0.45, ease: "back.out(3)" });
@@ -375,7 +373,7 @@
           }
           if (t.closest("[data-set]")) {
             const inp = $("[data-manual]", wrap), n = parseFloat(String(inp.value).replace(",", "."));
-            if (!isFinite(n)) return;
+            if (!Number.isFinite(n)) return;
             setVal(h, day, n); redraw(); return;
           }
           if (t.closest("[data-timer]")) { running(h) ? stopTimer(h) : startTimer(h); redraw(); return; }

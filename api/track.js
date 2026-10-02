@@ -8,13 +8,14 @@
 
    The token is a long random secret created in the app; it is the only "login" for these endpoints. */
 const crypto = require("crypto");
-const { redis, json, readBody, kvReady, localNow, validTz, allow, DAY } = require("./_lib");
+const { redis, json, readBody, kvReady, localNow, allow, DAY, fail } = require("./_lib");
+const { TrackConfig, TrackDelete, token, appId } = require("./_schemas");
 
 const MAX_TOKENS = 50;
 const KEEP = 3000;
-const tokOk = t => typeof t === "string" && /^[A-Za-z0-9_-]{24,64}$/.test(t);
+const tokOk = t => token.safeParse(t).success;
 const hash = t => crypto.createHash("sha256").update(t).digest("hex").slice(0, 32);
-const appOk = a => typeof a === "string" && /^[a-z0-9_-]{1,24}$/.test(a);
+const appOk = a => appId.safeParse(a).success;
 
 const QUESTIONS = [
   "Waarom open je het nu?",
@@ -40,22 +41,18 @@ module.exports = async (req, res) => {
 
     if (req.method === "POST" || req.method === "DELETE") {
       const body = await readBody(req);
-      if (!tokOk(body.t)) return json(res, 400, { error: "invalid token" });
+      if (!TrackDelete.safeParse(body).success) return json(res, 400, { error: "invalid token" });
       const h = hash(body.t);
       if (req.method === "DELETE") {
         await redis("DEL", "track:cfg:" + h, "track:ev:" + h);
         await redis("SREM", "track:tokens", h);
         return json(res, 200, { ok: true });
       }
-      if (!validTz(body.tz)) return json(res, 400, { error: "invalid tz" });
+      const p = TrackConfig.safeParse(body);
+      if (!p.success) return json(res, 400, { error: "invalid tz" });
       const known = await redis("SISMEMBER", "track:tokens", h);
       if (!known && (await redis("SCARD", "track:tokens")) >= MAX_TOKENS) return json(res, 403, { error: "full" });
-      const apps = {};
-      Object.entries(body.apps || {}).slice(0, 20).forEach(([id, a]) => {
-        if (!appOk(id) || !a) return;
-        apps[id] = { name: String(a.name || id).slice(0, 30), e: String(a.e || "📱").slice(0, 4), limit: Math.max(0, Math.min(500, parseInt(a.limit, 10) || 0)) };
-      });
-      await redis("SET", "track:cfg:" + h, JSON.stringify({ tz: body.tz, apps, updated: Date.now() }));
+      await redis("SET", "track:cfg:" + h, JSON.stringify({ tz: p.data.tz, apps: p.data.apps, updated: Date.now() }));
       await redis("SADD", "track:tokens", h);
       return json(res, 200, { ok: true });
     }
@@ -95,6 +92,6 @@ module.exports = async (req, res) => {
     if (url.searchParams.get("format") === "json") return json(res, 200, { app, count: n, limit: a.limit, message: msg });
     text(res, 200, msg);
   } catch (e) {
-    json(res, 500, { error: String(e.message || e) });
+    await fail(res, e, "track");
   }
 };

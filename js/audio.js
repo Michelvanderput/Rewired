@@ -46,7 +46,7 @@
 
   // "playback" ignores the iPhone silent switch; used only during sessions
   function session(on) {
-    try { if (navigator.audioSession) navigator.audioSession.type = on ? "playback" : "auto"; } catch (e) {}
+    try { if (navigator.audioSession) navigator.audioSession.type = on ? "playback" : "auto"; } catch {}
   }
 
   const Sound = {

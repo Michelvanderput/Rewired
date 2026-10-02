@@ -11,7 +11,8 @@
      delete   { authKey }                (Bearer token) removes account + data + sessions
 */
 const crypto = require("crypto");
-const { redis, json, readBody, kvReady, validUser, b64ok, sha256, sessionUser, allow, clientIp } = require("./_lib");
+const { redis, json, readBody, kvReady, sha256, sessionUser, allow, clientIp, fail } = require("./_lib");
+const { Salt, Register, Login, DeleteAccount } = require("./_schemas");
 
 const SESSION_TTL = 60 * 60 * 24 * 180; // 180 days
 const MAX_USERS = +process.env.MAX_USERS || 25;
@@ -42,19 +43,21 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return json(res, 405, { error: "method" });
   try {
     const body = await readBody(req);
-    const user = typeof body.user === "string" ? body.user.trim().toLowerCase() : "";
     const ip = clientIp(req);
 
     if (body.action === "salt") {
-      if (!validUser(user)) return json(res, 400, { error: "invalid_user" });
+      const p = Salt.safeParse(body);
+      if (!p.success) return json(res, 400, { error: "invalid_user" });
+      const { user } = p.data;
       const rec = await getUser(user);
       const salt = rec ? rec.salt : crypto.createHmac("sha256", SECRET).update("salt:" + user).digest().subarray(0, 16).toString("base64url");
       return json(res, 200, { salt });
     }
 
     if (body.action === "register") {
-      if (!validUser(user)) return json(res, 400, { error: "invalid_user" });
-      if (!b64ok(body.salt, 16) || !b64ok(body.authKey, 32)) return json(res, 400, { error: "invalid_key" });
+      const p = Register.safeParse(body);
+      if (!p.success) return json(res, 400, { error: p.error.issues.some(i => i.path[0] === "user") ? "invalid_user" : "invalid_key" });
+      const { user } = p.data;
       if (!(await allow("reg:" + ip, 5, 3600))) return json(res, 429, { error: "rate_limited" });
       if ((await redis("SCARD", "users")) >= MAX_USERS) return json(res, 403, { error: "full" });
       const hsalt = crypto.randomBytes(16).toString("base64url");
@@ -67,7 +70,9 @@ module.exports = async (req, res) => {
     }
 
     if (body.action === "login") {
-      if (!validUser(user) || !b64ok(body.authKey, 32)) return json(res, 400, { error: "invalid" });
+      const p = Login.safeParse(body);
+      if (!p.success) return json(res, 400, { error: "invalid" });
+      const { user } = p.data;
       if (!(await allow("login:" + user, 10, 900)) || !(await allow("loginip:" + ip, 30, 900))) return json(res, 429, { error: "rate_limited" });
       const rec = await getUser(user);
       if (!rec || !(await verify(rec, body.authKey))) return json(res, 401, { error: "wrong_credentials" });
@@ -86,7 +91,7 @@ module.exports = async (req, res) => {
 
     if (body.action === "delete") {
       const rec = await getUser(me);
-      if (!rec || !b64ok(body.authKey, 32) || !(await verify(rec, body.authKey))) return json(res, 401, { error: "wrong_credentials" });
+      if (!rec || !DeleteAccount.safeParse(body).success || !(await verify(rec, body.authKey))) return json(res, 401, { error: "wrong_credentials" });
       const sessions = (await redis("SMEMBERS", "sessions:" + me)) || [];
       for (const s of sessions) await redis("DEL", "session:" + s);
       await redis("DEL", "sessions:" + me, "user:" + me, "data:" + me);
@@ -96,6 +101,6 @@ module.exports = async (req, res) => {
 
     json(res, 400, { error: "unknown_action" });
   } catch (e) {
-    json(res, 500, { error: String(e.message || e) });
+    await fail(res, e, "auth");
   }
 };

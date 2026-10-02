@@ -14,7 +14,7 @@ async function redis(...cmd) {
     headers: { Authorization: `Bearer ${KV_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify(cmd)
   });
-  const j = await r.json();
+  const j = /** @type {{ result?: any, error?: string }} */ (await r.json());
   if (j.error) throw new Error("redis: " + j.error);
   return j.result;
 }
@@ -64,11 +64,11 @@ function validSubscription(s) {
   try {
     const u = new URL(s.endpoint);
     return u.protocol === "https:" && PUSH_HOSTS.test(u.hostname) && s.keys && typeof s.keys.p256dh === "string" && typeof s.keys.auth === "string";
-  } catch (e) { return false; }
+  } catch { return false; }
 }
 const validTime = t => typeof t === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 function validTz(tz) {
-  try { new Intl.DateTimeFormat("en", { timeZone: tz }); return true; } catch (e) { return false; }
+  try { new Intl.DateTimeFormat("en", { timeZone: tz }); return true; } catch { return false; }
 }
 
 /* ---------- time in the user's timezone ---------- */
@@ -179,8 +179,48 @@ async function allow(key, max, seconds) {
   return n <= max;
 }
 
+/* ---------- optional error reporting (Sentry) ----------
+   Only when SENTRY_DSN is set. Sends the error type, message, stack and route — never request bodies,
+   usernames, tokens or IPs. Plain fetch to the envelope endpoint, so no SDK is needed. */
+function sentryTarget(dsn) {
+  try {
+    const u = new URL(dsn);
+    const project = u.pathname.replace(/\//g, "");
+    if (!u.username || !/^\d+$/.test(project)) return null;
+    return { url: `${u.protocol}//${u.host}/api/${project}/envelope/`, key: u.username, dsn: `${u.protocol}//${u.username}@${u.host}/${project}` };
+  } catch { return null; }
+}
+async function report(e, route) {
+  const t = process.env.SENTRY_DSN && sentryTarget(process.env.SENTRY_DSN);
+  if (!t) return;
+  const id = crypto.randomUUID().replace(/-/g, "");
+  const event = {
+    event_id: id, timestamp: Date.now() / 1000, platform: "node", level: "error",
+    environment: process.env.VERCEL_ENV || "development", server_name: "api", tags: { route },
+    exception: { values: [{ type: (e && e.name) || "Error", value: String((e && e.message) || e).slice(0, 500), stacktrace: { frames: stackFrames(e && e.stack) } }] }
+  };
+  const body = [JSON.stringify({ event_id: id, dsn: t.dsn, sent_at: new Date().toISOString() }), JSON.stringify({ type: "event" }), JSON.stringify(event)].join("\n");
+  try {
+    await fetch(t.url, {
+      method: "POST", body, signal: AbortSignal.timeout(2000),
+      headers: { "Content-Type": "application/x-sentry-envelope", "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${t.key}, sentry_client=rewired-api/1.0` }
+    });
+  } catch {}
+}
+function stackFrames(stack) {
+  return String(stack || "").split("\n").slice(1, 30).map(l => {
+    const m = l.match(/\(?([^()\s]+):(\d+):(\d+)\)?$/);
+    return m ? { filename: m[1].replace(/^.*\/(api|node_modules)\//, "$1/"), lineno: +m[2], colno: +m[3], function: (l.match(/at ([^\s(]+) \(/) || [])[1] || "?" } : null;
+  }).filter(Boolean).reverse();
+}
+/* 500 answer that is reported first (a Vercel function may be frozen right after it answers) */
+async function fail(res, e, route) {
+  await report(e, route);
+  json(res, 500, { error: String((e && e.message) || e) });
+}
+
 function clientIp(req) {
   return String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
 }
 
-module.exports = { redis, saveSub, getSub, deleteSubKey, allSubs, config, validSubscription, validTime, validTz, localNow, toMin, message, send, json, readBody, DAY, sha256, validUser, b64ok, kvReady, sessionUser, allow, clientIp };
+module.exports = { redis, saveSub, getSub, deleteSubKey, allSubs, config, validSubscription, validTime, validTz, localNow, toMin, message, send, json, readBody, DAY, sha256, validUser, b64ok, kvReady, sessionUser, allow, clientIp, report, fail, sentryTarget };

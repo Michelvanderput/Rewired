@@ -1,6 +1,6 @@
 /* App-open tracking via iOS Shortcuts automations: counts, limits and a "realisation" overview */
 (function () {
-  const { $, $$, esc, haptic, toast, sheet } = FX;
+  const { $, esc, haptic, toast, sheet } = FX;
   const DAY = Store.DAY;
   const S = () => Store.s;
   const CACHE = "rewired.appEvents";
@@ -47,7 +47,7 @@
   }
 
   let events = [];
-  try { events = JSON.parse(localStorage.getItem(CACHE) || "[]"); } catch (e) {}
+  try { events = JSON.parse(localStorage.getItem(CACHE) || "[]"); } catch {}
   let lastPull = 0;
   async function pull(force) {
     if (!configured() || (!force && Date.now() - lastPull < 20000)) return false;
@@ -58,9 +58,9 @@
       const data = await r.json();
       const changed = JSON.stringify(data.events) !== JSON.stringify(events);
       events = data.events || [];
-      try { localStorage.setItem(CACHE, JSON.stringify(events)); } catch (e) {}
+      try { localStorage.setItem(CACHE, JSON.stringify(events)); } catch {}
       return changed;
-    } catch (e) { return false; }
+    } catch { return false; }
   }
 
   /* ---------- numbers ---------- */
@@ -210,7 +210,7 @@
           if (cp) {
             pushConfig();
             try { await navigator.clipboard.writeText(linkFor(cp.dataset.copy)); toast("Link gekopieerd, plak hem in Opdrachten"); cp.textContent = "✓ Gekopieerd"; }
-            catch (err) { prompt("Kopieer deze link:", linkFor(cp.dataset.copy)); }
+            catch { prompt("Kopieer deze link:", linkFor(cp.dataset.copy)); }
             haptic(); return;
           }
           const ts = t.closest("[data-test]");
@@ -219,14 +219,14 @@
             const c = cfg();
             await fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: c.token, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, apps: c.apps }) }).catch(() => {});
             try { const r = await fetch(linkFor(ts.dataset.test)); toast(await r.text()); await pull(true); }
-            catch (err) { toast("Test mislukt, geen verbinding"); }
+            catch { toast("Test mislukt, geen verbinding"); }
             return;
           }
           if (t.closest("[data-stop]")) {
             const c = cfg();
             if (c.token) fetch("/api/track", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: c.token }) }).catch(() => {});
             S().track = { token: null, apps: {}, perOpen: c.perOpen || 3 }; Store.save();
-            events = []; try { localStorage.removeItem(CACHE); } catch (x) {}
+            events = []; try { localStorage.removeItem(CACHE); } catch {}
             toast("App-tracking gestopt. Verwijder ook de automatiseringen in Opdrachten."); redraw();
           }
         });

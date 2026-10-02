@@ -14,7 +14,7 @@
   }
 
   function segHtml(name, opts, val) {
-    return `<div class="seg" data-seg="${name}">${opts.map(o => `<button data-v="${o[0]}" class="${o[0] == val ? "on" : ""}">${o[1]}</button>`).join("")}</div>`;
+    return `<div class="seg" data-seg="${name}">${opts.map(o => `<button data-v="${o[0]}" class="${String(o[0]) === String(val) ? "on" : ""}">${o[1]}</button>`).join("")}</div>`;
   }
   function bindSeg(root, name, cb) {
     const seg = root.querySelector(`[data-seg="${name}"]`);
@@ -312,10 +312,10 @@
       onMount(el, close) {
         const orb = $("[data-orb]", el), layers = $$(".layer", orb);
         tweens.push(gsap.to(orb, { scale: 1.18, duration: 5, repeat: -1, yoyo: true, ease: "sine.inOut" }));
-        layers.forEach((l, i) => tweens.push(gsap.to(l, { rotation: i % 2 ? -360 : 360, x: [18, -14, 10][i], duration: 14 + i * 5, repeat: -1, ease: "none", transformOrigin: "45% 55%" })));
+        if (!FX.calm()) layers.forEach((l, i) => tweens.push(gsap.to(l, { rotation: i % 2 ? -360 : 360, x: [18, -14, 10][i], duration: 14 + i * 5, repeat: -1, ease: "none", transformOrigin: "45% 55%" })));
         // floating particles
         const parts = $("[data-parts]", el);
-        for (let i = 0; i < 28; i++) {
+        for (let i = 0; i < (FX.calm() ? 0 : 28); i++) {
           const d = document.createElement("i"); d.className = "particle"; parts.appendChild(d);
           gsap.set(d, { x: Math.random() * innerWidth, y: innerHeight + 20, opacity: Math.random() * 0.6 + 0.1, scale: Math.random() * 1.5 + 0.5 });
           tweens.push(gsap.to(d, { y: -20, x: "+=" + gsap.utils.random(-60, 60), duration: gsap.utils.random(10, 22), repeat: -1, delay: -Math.random() * 20, ease: "none" }));

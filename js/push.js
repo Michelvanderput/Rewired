@@ -1,6 +1,6 @@
 /* Web push reminders (iOS 16.4+ when installed on the home screen) */
 (function () {
-  const { $, $$, esc, haptic, toast } = FX;
+  const { esc, haptic, toast } = FX;
   const KEY_CACHE = "rewired.vapid";
 
   const REMINDERS = [
@@ -35,13 +35,13 @@
       const r = await fetch("/api/vapid", { cache: "no-store" });
       if (r.ok) {
         const { publicKey } = await r.json();
-        try { localStorage.setItem(KEY_CACHE, publicKey); } catch (e) {}
+        try { localStorage.setItem(KEY_CACHE, publicKey); } catch {}
         keyInfo = { key: publicKey };
       } else {
         keyInfo = { key: null, reason: r.status === 503 ? "config" : "server" };
       }
-    } catch (e) {
-      let cached = null; try { cached = localStorage.getItem(KEY_CACHE); } catch (x) {}
+    } catch {
+      let cached = null; try { cached = localStorage.getItem(KEY_CACHE); } catch {}
       keyInfo = cached ? { key: cached } : { key: null, reason: "offline" };
     }
     return keyInfo;
@@ -134,7 +134,7 @@
       }
       await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload(sub)) });
       lastSig = JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, window.Recap && Recap.summary(Store.dayKey())]);
-    } catch (e) {}
+    } catch {}
   }
 
   /* ---------------- UI ---------------- */

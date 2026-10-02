@@ -8,7 +8,7 @@
      Elsewhere navigator.vibrate is used when available. */
   function haptic(pattern = 10) {
     if (!Store.s.settings.haptics) return;
-    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} return; }
+    if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch {} return; }
     const l = document.getElementById("hapticLabel");
     if (l) l.click();
   }
@@ -23,7 +23,13 @@
       .to(t, { yPercent: -160, opacity: 0, duration: 0.4, ease: "power2.in" }, "+=2.2");
   }
 
+  /* Reduced motion: iOS "Verminder beweging" or the in-app setting. Decorative loops, confetti and slides are skipped;
+     functional animation (breathing guide, light therapy the user starts on purpose) stays. */
+  const reduceMQ = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+  function calm() { return !!(Store.s.settings && Store.s.settings.calm) || reduceMQ.matches; }
+
   function confetti(count = 80) {
+    if (calm()) return;
     const colors = ["#7c5cff", "#22d3ee", "#f472b6", "#34d399", "#fbbf24", "#ffffff"];
     const W = innerWidth, H = innerHeight;
     for (let i = 0; i < count; i++) {
@@ -52,6 +58,7 @@
   function staggerIn(root) {
     const limit = root.getBoundingClientRect().bottom;
     const items = $$("[data-anim]", root).filter(el => el.getBoundingClientRect().top < limit);
+    if (calm()) { gsap.fromTo(items, { opacity: 0 }, { opacity: 1, duration: 0.25, clearProps: "opacity" }); return; }
     gsap.fromTo(items, { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", stagger: 0.035, clearProps: "transform,opacity" });
   }
 
@@ -123,14 +130,19 @@
     try {
       if (on && "wakeLock" in navigator) lock = await navigator.wakeLock.request("screen");
       else if (!on && lock) { await lock.release(); lock = null; }
-    } catch (e) {}
+    } catch {}
   }
 
+  /* Background blobs and the pulsing ring around the panic button: both endless, so both off in calm mode */
   function ambientBg() {
+    gsap.killTweensOf(".b1,.b2,.b3,.panic-ring");
+    if (calm()) { gsap.set(".b1,.b2,.b3", { x: 0, y: 0 }); gsap.set(".panic-ring", { scale: 1, opacity: 0 }); return; }
     gsap.to(".b1", { x: 120, y: 160, duration: 18, repeat: -1, yoyo: true, ease: "sine.inOut" });
     gsap.to(".b2", { x: -100, y: -120, duration: 22, repeat: -1, yoyo: true, ease: "sine.inOut" });
     gsap.to(".b3", { x: 140, y: -80, duration: 20, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    gsap.fromTo(".panic-ring", { scale: 1, opacity: 1 }, { scale: 1.35, opacity: 0, duration: 1.8, repeat: -1, ease: "power2.out" });
   }
+  if (reduceMQ.addEventListener) reduceMQ.addEventListener("change", () => ambientBg());
 
   const closeIcon = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   const checkIcon = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -149,5 +161,5 @@
     return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  window.FX = { $, $$, esc, haptic, toast, confetti, countUp, staggerIn, sheet, fullscreen, wake, ambientBg, closeIcon, checkIcon, fmtDur, fmtClock, relTime };
+  window.FX = { $, $$, esc, calm, haptic, toast, confetti, countUp, staggerIn, sheet, fullscreen, wake, ambientBg, closeIcon, checkIcon, fmtDur, fmtClock, relTime };
 })();

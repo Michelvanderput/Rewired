@@ -1,0 +1,8 @@
+tests/
+.github/
+test-results/
+playwright-report/
+playwright.config.js
+vitest.config.mjs
+biome.json
+tsconfig.json

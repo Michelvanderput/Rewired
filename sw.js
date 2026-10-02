@@ -1,9 +1,10 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "rewired-v10";
+const VERSION = "rewired-v11";
 const SHELL = [
   "./",
   "index.html",
   "css/style.css",
+  "js/monitor.js",
   "js/data.js",
   "js/store.js",
   "js/audio.js",
@@ -75,7 +76,7 @@ self.addEventListener("fetch", e => {
 /* ---------- Push notifications ---------- */
 self.addEventListener("push", e => {
   let data = {};
-  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+  try { data = e.data ? e.data.json() : {}; } catch { data = { body: e.data && e.data.text() }; }
   const title = data.title || "Rewired";
   e.waitUntil(Promise.all([
     self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage({ type: "push", title, body: data.body || "" }))),

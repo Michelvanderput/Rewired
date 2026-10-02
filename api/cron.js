@@ -1,7 +1,7 @@
 /* GET /api/cron → send every reminder that is due.
    Call it every 5–15 minutes (cron-job.org) and/or via the daily Vercel cron.
    Auth: "Authorization: Bearer <CRON_SECRET>" (Vercel cron sends this) or ?key=<CRON_SECRET>. */
-const { redis, config, json, allSubs, saveSub, deleteSubKey, localNow, toMin, message, send } = require("./_lib");
+const { redis, config, json, fail, allSubs, saveSub, deleteSubKey, localNow, toMin, message, send } = require("./_lib");
 
 // A reminder is still sent when the cron runs up to this many minutes late
 const WINDOW = 90;
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
   if (new URL(req.url, "http://x").searchParams.get("status") === "1") {
     const last = await redis("GET", "cron:last");
     const subs = (await allSubs()).filter(x => x.rec).map(({ rec }) => ({ tz: rec.tz, now: localNow(rec.tz, now), reminders: rec.reminders, lastSent: rec.lastSent }));
-    return json(res, 200, { lastRun: last ? new Date(+last).toISOString() : null, minutesAgo: last ? Math.round((now - last) / 60000) : null, subs });
+    return json(res, 200, { lastRun: last ? new Date(+last).toISOString() : null, minutesAgo: last ? Math.round((+now - +last) / 60000) : null, subs });
   }
 
   // Diagnostics (?test=1): send a test to every subscription and report what the push service answers
@@ -55,6 +55,18 @@ module.exports = async (req, res) => {
     return json(res, 200, { subject: process.env.VAPID_SUBJECT || "(niet ingesteld)", results: out });
   }
 
+  // cron-job.org and the daily Vercel cron can overlap: only one run at a time, so nothing is sent twice
+  if ((await redis("SET", "cron:lock", "1", "NX", "EX", 120)) !== "OK") return json(res, 200, { skipped: "already running" });
+  try {
+    json(res, 200, await run(now));
+  } catch (e) {
+    await fail(res, e, "cron");
+  } finally {
+    await redis("DEL", "cron:lock");
+  }
+};
+
+async function run(now) {
   await redis("SET", "cron:last", String(now.getTime()));
   const report = { subs: 0, sent: 0, removed: 0, errors: 0 };
   for (const { key: k, rec } of await allSubs()) {
@@ -77,7 +89,7 @@ module.exports = async (req, res) => {
     if (gone) { await deleteSubKey(k); report.removed++; }
     else await saveSub(rec);
   }
-  json(res, 200, report);
-};
+  return report;
+}
 
 module.exports.due = due;
