@@ -11,6 +11,11 @@ test("onboarding → home → tabs → tools → panic → relapse", async ({ pa
   await next();
   await page.fill("[data-name]", "Michel");
   await next();
+  // what you work on: gambling + ADHD, with the weekly amount for the money counter
+  await page.waitForTimeout(600);
+  await page.tap('[data-topics] [data-v="gambling"]'); await page.tap('[data-topics] [data-v="adhd"]');
+  await page.fill("[data-money]", "50");
+  await next();
   // the "how often" answers must become fully visible (regression: CSS transition froze GSAP)
   await page.waitForTimeout(1200);
   const opacities = await page.$$eval(".opt", els => els.map(e => +getComputedStyle(e).opacity));
@@ -29,6 +34,9 @@ test("onboarding → home → tabs → tools → panic → relapse", async ({ pa
   await closeAllOverlays(page); // milestone celebration (1 week) + recap of yesterday
   await expect(page.locator("[data-days]")).toHaveText("7");
   expect(await page.evaluate(() => Store.s.signature.startsWith("data:image/png"))).toBe(true);
+  expect(await page.evaluate(() => [Store.s.focus, Store.s.focusMoney])).toEqual([["gambling", "adhd"], 50]);
+  await expect(page.locator(".fp-money")).toContainText("€ 50 niet vergokt"); // a week ago × €50 per week
+  await expect(page.locator(".fp-card")).toContainText("Je startplan");
 
   // home interactions
   await page.tap('[data-toggle-reset="cold"]');

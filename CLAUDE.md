@@ -7,7 +7,7 @@ read it before adding or changing behaviour (plans, reminders, streaks, rewards,
 ## Stack and layout
 
 - No build step. `index.html` loads plain scripts from `js/` in order; each file is an IIFE that sets one global
-  (`Store`, `FX`, `Sound`, `Monitor`, `Push`, `Sync`, `Habits`, `Recap`, `Rewards`, `AppTrack`, `Risk`, `Reflect`, `Routine`, `Learn`, `Tools`, `App`).
+  (`Store`, `FX`, `Sound`, `Monitor`, `Push`, `Sync`, `Habits`, `Recap`, `Rewards`, `AppTrack`, `Risk`, `Reflect`, `Routine`, `Focus`, `Learn`, `Tools`, `App`).
   New globals must be added to `biome.json` → `javascript.globals`.
 - GSAP 3 is vendored in `js/vendor/` (the CSP only allows `'self'` scripts).
 - State: one object in `localStorage["rewired.v1"]` (`js/store.js`). Every new top-level key that the user creates
@@ -31,6 +31,9 @@ read it before adding or changing behaviour (plans, reminders, streaks, rewards,
   wipe existing users' data.
 - Secrets (VAPID private key, CRON_SECRET, Upstash token, SENTRY_DSN) live only in Vercel env vars.
 - UI copy is Dutch, friendly and non-judgemental (see `docs/ontwerp.md` → Taal en feedback).
+- Keep the app calm: topic-specific content (porn, gambling, ADHD) only appears for a chosen `state.focus`, and Home
+  should not gain permanent cards; temporary ones (starter plan, routine, risk) disappear when done.
+- Never run two Playwright runs at the same time: they share `test-results/` and break each other's traces.
 
 ## Checks
 

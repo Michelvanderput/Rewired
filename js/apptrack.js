@@ -21,8 +21,10 @@
     { id: "twitch", name: "Twitch", e: "🟣", limit: 3 },
     { id: "discord", name: "Discord", e: "🎮", limit: 10 },
     { id: "whatsapp", name: "WhatsApp", e: "💬", limit: 30 },
-    { id: "tinder", name: "Tinder", e: "🔥", limit: 3 }
+    { id: "tinder", name: "Tinder", e: "🔥", limit: 3 },
+    { id: "gokapp", name: "Gok-/wed-app", e: "💶", limit: 1, focus: "gambling" }
   ];
+  const appList = () => APPS.filter(a => !a.focus || (window.Focus && Focus.has(a.focus)));
 
   const cfg = () => S().track || (S().track = { token: null, apps: {}, perOpen: 3 });
   const configured = () => !!(cfg().token && Object.keys(cfg().apps).length);
@@ -161,7 +163,7 @@
       const chosen = Object.keys(c.apps);
       return `
         <label class="lbl">Welke apps wil je volgen?</label>
-        <div class="chips">${APPS.map(a => `<button class="chip ${c.apps[a.id] ? "on" : ""}" data-app="${a.id}">${a.e} ${a.name}</button>`).join("")}</div>
+        <div class="chips">${appList().map(a => `<button class="chip ${c.apps[a.id] ? "on" : ""}" data-app="${a.id}">${a.e} ${a.name}</button>`).join("")}</div>
         ${chosen.length ? `<label class="lbl">Limiet per dag (aantal keer openen)</label>
         ${chosen.map(id => { const a = c.apps[id]; return `<div class="at-set">
           <span class="at-e">${esc(a.e)}</span><b style="flex:1">${esc(a.name)}</b>

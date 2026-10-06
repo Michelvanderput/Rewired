@@ -444,11 +444,12 @@
   }
 
   /* Starting with 1–3 habits at a time works best; graduated ones don't count */
+  const cap = () => (window.Focus && Focus.has("adhd") ? 2 : 3);
   function tooManyHtml() {
     const n = active().length;
-    if (n < 3) return "";
+    if (n < cap()) return "";
     return `<div class="card" style="margin-bottom:12px;border-color:rgba(251,191,36,.45)"><div style="font-weight:600">⚖️ Je volgt al ${n} gewoontes</div>
-      <p class="small muted" style="margin-top:4px">Nieuwe gewoontes lukken het best met 1 tot 3 tegelijk. Overweeg te wachten tot een gewoonte automatisch gaat (zie de check elke 14 dagen) voor je er een bij neemt.</p></div>`;
+      <p class="small muted" style="margin-top:4px">Nieuwe gewoontes lukken het best met ${cap() === 2 ? "1 of 2 (zeker met ADHD)" : "1 tot 3"} tegelijk. Overweeg te wachten tot een gewoonte automatisch gaat (zie de check elke 14 dagen) voor je er een bij neemt.</p></div>`;
   }
 
   function rowHtml(h) {
@@ -782,7 +783,7 @@
           Store.save(); haptic([10, 20, 10]); Sound.success();
           b.classList.add("have"); b.querySelector(".tpl-s").textContent = "✓ Toegevoegd";
           gsap.fromTo(b, { scale: 0.92 }, { scale: 1, duration: 0.5, ease: "back.out(3)" });
-          toast(active().length > 3 ? `${t.e} ${t.t} toegevoegd · dat zijn er ${active().length}, begin klein` : `${t.e} ${t.t} toegevoegd · tik erop voor je plan`);
+          toast(active().length > cap() ? `${t.e} ${t.t} toegevoegd · dat zijn er ${active().length}, begin klein` : `${t.e} ${t.t} toegevoegd · tik erop voor je plan`);
           if (window.App) App.refresh(false);
         });
       }
@@ -801,7 +802,7 @@
     sheet(`
       <h2>Gewoontes</h2>
       <p class="sub">Vervang het oude patroon met nieuwe gewoontes. Tik op een gewoonte voor details.</p>
-      ${active().length > 3 ? tooManyHtml() : ""}
+      ${active().length > cap() ? tooManyHtml() : ""}
       <div data-list>${draw()}</div>
       <div style="margin-top:16px"><button class="btn" data-add>＋ Gewoonte toevoegen</button></div>`, {
       onMount(sh, close) {

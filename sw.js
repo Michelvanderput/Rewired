@@ -1,5 +1,5 @@
 /* Offline support: cache the app shell, GSAP and fonts */
-const VERSION = "routini-v16";
+const VERSION = "routini-v17";
 const SHELL = [
   "./",
   "index.html",
@@ -18,8 +18,10 @@ const SHELL = [
   "js/risk.js",
   "js/reflect.js",
   "js/routine.js",
+  "js/focus.js",
   "js/lessons.js",
   "js/lessons2.js",
+  "js/lessons3.js",
   "js/learn.js",
   "js/tools.js",
   "js/app.js",

@@ -22,7 +22,7 @@ const tooClose = () => {
 
 test("page gutters on every tab and in the main sheets", async ({ page }) => {
   test.setTimeout(180000);
-  await seed(page, {}, { daysClean: 6.5 }); await skipRecap(page);
+  await seed(page, { focus: ["porn", "gambling", "adhd"], focusMoney: 50 }, { daysClean: 6.5 }); await skipRecap(page);
   await page.goto("/"); await page.waitForTimeout(1000); await closeAllOverlays(page);
   for (const t of ["home", "tools", "progress", "learn", "profile"]) {
     await page.tap(`.tab[data-tab="${t}"]`); await page.waitForTimeout(1000);

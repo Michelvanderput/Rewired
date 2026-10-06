@@ -11,6 +11,7 @@
     bestStreak: 0,
     goalDays: 90,
     reasons: [],
+    focus: [],           // what you work on: "porn" | "gambling" | "adhd" (js/focus.js)
     triggers: [],
     pledge: "",
     signature: "",

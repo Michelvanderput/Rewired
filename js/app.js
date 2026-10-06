@@ -46,6 +46,7 @@
       </header>
       ${Push.homeCardHtml()}
       ${Routine.homeCardHtml()}
+      ${Focus.planCardHtml()}
       ${Risk.homeCardHtml()}
       ${Reflect.homeCardHtml()}
       ${Rewards.recoveryCardHtml()}
@@ -65,6 +66,7 @@
           </div>
         </div>
         <div class="hero-sub">Volgende: <b style="color:#fff">${next.e} ${next.t}</b> · nog ${Math.ceil(toNext / DAY)} ${Math.ceil(toNext / DAY) === 1 ? "dag" : "dagen"}</div>
+        ${Focus.moneyHtml()}
         <div class="brain-bar">
           <div class="row between small" style="margin-bottom:8px"><span class="muted">🧠 Brein herbedraad</span><b data-rewire>0%</b></div>
           <div class="bar"><i data-rewire-bar></i></div>
@@ -135,6 +137,7 @@
         ${tile("surf", "🌊", "Urge surfing", "Rijd de golf uit", "cyan", "#0ea5e9")}
         ${tile("panic", "🚨", "Noodmodus", "Directe hulp", "red", "#ff2d55")}
         ${tile("routines", "🌅", "Ochtend & avond", "Begin en eindig je dag goed", "amber", "#fb923c")}
+        ${Focus.has("adhd") ? tile("dopa", "⚡", "Dopamine-menu", "Snelle, gezonde prikkels", "violet", "#a78bfa") : ""}
         ${tile("habits", "✅", "Gewoontes", "Bouw consistentie", "green", "#34d399")}
         ${tile("journal", "✍️", "Dagboek", "Reflecteer", "amber", "#fbbf24")}
         ${tile("urge", "📍", "Drang loggen", "Vind je patronen", "violet", "#7c5cff")}
@@ -281,6 +284,11 @@
 
       <div class="section-title" data-anim><h3>Meldingen</h3></div>
       <div data-push data-anim></div>
+
+      <div class="card flush" data-anim style="margin-top:12px">
+        <button class="list-item" style="width:100%;text-align:left" data-action="focus"><span class="li-ico">🎯</span><span class="li-body"><div class="li-title">Waar werk ik aan</div><div class="li-sub">${esc(Focus.label())}</div></span><span class="muted">›</span></button>
+        <button class="list-item" style="width:100%;text-align:left" data-action="help"><span class="li-ico">🤝</span><span class="li-body"><div class="li-title">Hulp & contact</div><div class="li-sub">Anoniem praten, gokstop, huisarts</div></span><span class="muted">›</span></button>
+      </div>
 
       <div class="section-title" data-anim><h3>Waarom ik dit doe</h3><button class="link" data-action="editReasons">Wijzig</button></div>
       <div class="card" data-anim>
@@ -486,7 +494,7 @@
       <label class="lbl">Hoe voel je je?</label>
       ${chipsHtml(DATA.feelings, [], "feel")}
       <label class="lbl">Trigger</label>
-      ${chipsHtml(DATA.triggers, [], "trig")}
+      ${chipsHtml(Focus.triggers(), [], "trig")}
       ${left > 0 ? `<p class="small muted" style="margin-top:8px">Nog ${left} ${left === 1 ? "log" : "logs"} tot je persoonlijke risicomomenten zichtbaar worden.</p>` : ""}
       <label class="lbl">Resultaat</label>
       <div class="seg" data-res><button class="on" data-v="1">💪 Weerstaan</button><button data-v="0">Toegegeven</button></div>
@@ -515,7 +523,7 @@
           if (!before && Risk.moments().length) setTimeout(() => toast("📍 Je risicomomenten zijn nu zichtbaar bij Voortgang"), 3200);
           Sound.success(); haptic([10, 30, 10]);
           toast("Drang weerstaan 🛡️ · de golf is voorbij gegaan"); refresh();
-          if (intensity >= 7) setTimeout(() => toast("Tip: probeer nu Lichttherapie of Ademhaling"), 3000);
+          if (intensity >= 7) setTimeout(() => toast(Focus.has("adhd") ? "Tip: kies iets van je dopamine-menu (Tools)" : "Tip: probeer nu Lichttherapie of Ademhaling"), 3000);
         });
       }
     });
@@ -527,14 +535,16 @@
       <h2>Terugval registreren</h2>
       <p class="sub">Dit is geen mislukking, het is data. Je brein verliest zijn vooruitgang niet door één misstap. Wees mild voor jezelf en begin direct opnieuw.</p>
       <label class="lbl">Wat was de trigger?</label>
-      ${chipsHtml(DATA.triggers, preTrigger ? [preTrigger] : [], "trig")}
+      ${chipsHtml(Focus.triggers(), preTrigger ? [preTrigger] : [], "trig")}
       <label class="lbl">Wat leer je hiervan?</label>
       <textarea class="field" data-note placeholder="Wat doe ik de volgende keer anders?">${esc(preNote)}</textarea>
       <div style="margin-top:22px"><button class="btn danger" data-save>Reset mijn teller</button></div>
+      <div style="margin-top:12px;text-align:center"><button class="small" data-help style="color:var(--accent2)">Hulp nodig? Anoniem praten kan altijd →</button></div>
       <div style="margin-top:10px"><button class="btn ghost" data-cancel>Annuleren</button></div>`, {
       onMount(sh, close) {
         bindChips(sh, "trig", false, v => trigger = v[0] || "");
         $("[data-cancel]", sh).addEventListener("click", close);
+        $("[data-help]", sh).addEventListener("click", () => { close(); setTimeout(() => Focus.helpSheet(), 320); });
         $("[data-save]", sh).addEventListener("click", () => {
           const old = Store.streakDays();
           Store.relapse(trigger, $("[data-note]", sh).value.trim(), extra);
@@ -753,7 +763,7 @@
   /* ====================================================== */
 
   function onboarding() {
-    const ans = { name: "", freq: "", triggers: [], reasons: [], last: "now", pledge: "", signature: "" };
+    const ans = { name: "", focus: [], money: 0, freq: "", triggers: [], reasons: [], last: "now", pledge: "", signature: "" };
     let step = 0;
     const el = document.createElement("div");
     el.className = "ob";
@@ -814,13 +824,23 @@
         valid: () => true
       },
       {
+        html: () => `<h1>Waar werk je aan?</h1><p class="lead">Kies wat bij je past, meerdere mag. Routini past lessen, triggers en hulp hierop aan. Niets verlaat je telefoon.</p>
+          <div style="margin-top:22px">${Focus.chooserHtml(ans.focus, ans.money)}</div>
+          <p class="small muted" style="margin-top:14px">Liever niet zeggen? Ga gewoon door, je kunt dit later aanpassen in Profiel.</p>`,
+        mount: () => {
+          Focus.bindChooser(body, ans.focus);
+          const m = $("[data-money]", body); m.addEventListener("input", () => { ans.money = Math.max(0, Math.round(+m.value || 0)); });
+        },
+        valid: () => true
+      },
+      {
         html: () => `<h1>Hoe vaak worstel je hiermee?</h1><p class="lead">Zo stemmen we je plan af.</p><div style="margin-top:26px" data-opts>
           ${[["🔥", "Meerdere keren per dag"], ["📅", "Dagelijks"], ["🗓️", "Een paar keer per week"], ["🌙", "Wekelijks of minder"]].map(([e, t]) => `<button class="opt ${ans.freq === t ? "on" : ""}" data-v="${t}"><span class="emo">${e}</span>${t}</button>`).join("")}</div>`,
         mount: () => single("freq"),
         valid: () => !!ans.freq
       },
       {
-        html: () => `<h1>Wat triggert je?</h1><p class="lead">Kies alles wat herkenbaar is.</p><div style="margin-top:26px">${chipsHtml(DATA.triggers.filter(t => t !== "Anders"), ans.triggers, "ot")}</div>`,
+        html: () => `<h1>Wat triggert je?</h1><p class="lead">Kies alles wat herkenbaar is.</p><div style="margin-top:26px">${chipsHtml(Focus.triggers(ans.focus).filter(t => t !== "Anders"), ans.triggers, "ot")}</div>`,
         mount: () => bindChips(body, "ot", true, v => ans.triggers = v),
         valid: () => true
       },
@@ -912,7 +932,7 @@
       if (step < steps.length - 1) { step++; show(1); return; }
       // finish
       const start = ans.last === "now" ? Date.now() : Date.now() - +ans.last * DAY;
-      Store.set({ onboarded: true, name: ans.name, freq: ans.freq, triggers: ans.triggers, reasons: ans.reasons, pledge: ans.pledge, signature: ans.signature, startDate: start, firstStart: start });
+      Store.set({ onboarded: true, focus: ans.focus.slice(), focusMoney: ans.focus.includes("gambling") ? ans.money : 0, name: ans.name, freq: ans.freq, triggers: ans.triggers, reasons: ans.reasons, pledge: ans.pledge, signature: ans.signature, startDate: start, firstStart: start });
       Sound.success(); confetti(100);
       gsap.to(el, { opacity: 0, scale: 1.05, duration: 0.6, delay: 0.3, ease: "power2.in", onComplete: () => { el.remove(); boot(); } });
     });
@@ -927,7 +947,8 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, reflect: () => Reflect.open(), routines: () => Routine.overview(), blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
+    panic: Tools.panic, reflect: () => Reflect.open(), routines: () => Routine.overview(),
+    focus: () => Focus.focusSheet(), help: () => Focus.helpSheet(), dopa: () => Focus.menuSheet(), blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
       .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
     pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
@@ -944,6 +965,8 @@
     v.addEventListener("click", e => {
       const a = e.target.closest("[data-action]");
       if (a) { haptic(); Sound.tap(); ACTIONS[a.dataset.action] && ACTIONS[a.dataset.action](); return; }
+
+      if (Focus.planClick(e)) return;
 
       const ro = e.target.closest("[data-routine]");
       if (ro) { haptic(); Sound.tap(); Routine.start(ro.dataset.routine); return; }
@@ -1046,7 +1069,7 @@
     });
   }
 
-  window.App = { refresh, relapseSheet };
+  window.App = { refresh, relapseSheet, action: name => ACTIONS[name] && ACTIONS[name]() };
 
   /* ---------- init ---------- */
   FX.ambientBg();

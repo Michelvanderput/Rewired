@@ -46,6 +46,9 @@
     return all[which];
   }
   const steps = (which, short) => cfg(which).steps.filter(st => st.on && (!short || st.core));
+  /* short version by default for ADHD, or after choosing "Korte routines" in the starter plan */
+  const defShort = () => !!(S().routineShort || (window.Focus && Focus.has("adhd")));
+  const shortOf = L => (L && L.short != null ? !!L.short : defShort());
   const mins = list => Math.max(1, Math.round(list.reduce((a, st) => a + (st.min || 1), 0)));
   /* the evening belongs to the day it started: 00:30 is still "last night" */
   const dayOf = (which, d = new Date()) => which === "evening" && d.getHours() < 4 ? Store.dayKey(d.getTime() - DAY) : Store.dayKey(d);
@@ -82,7 +85,7 @@
     if ($("#fs-root").children.length) return;
     const M = META[which], L = log(which);
     // timer: counts towards an end time, so it stays right when the phone locks and intervals pause
-    let short = !!L.short, list = steps(which, short), i = -1, timer = null, left = 0, endAt = 0, running = false;
+    let short = shortOf(L), list = steps(which, short), i = -1, timer = null, left = 0, endAt = 0, running = false;
     const prevPlan = which === "morning" ? ((peek("evening", Store.dayKey(Date.now() - DAY)) || {}).text || "") : "";
     const calm = FX.calm();
 
@@ -237,7 +240,7 @@
   function homeCardHtml() {
     const which = current();
     if (!which || finished(which)) return "";
-    const M = META[which], L = peek(which) || { done: [] }, list = steps(which, L.short);
+    const M = META[which], L = peek(which) || { done: [] }, list = steps(which, shortOf(L));
     const n = list.filter(st => L.done.includes(st.id)).length;
     return `<button class="card tap rt-card ${which}" data-routine="${which}" data-anim>
       <span class="rt-card-e">${M.e}</span>

@@ -112,7 +112,7 @@
     if (relapses.length) {
       const r = relapses[relapses.length - 1];
       bad.unshift({ e: "↺", t: `Terugval om ${hm(r.ts)}${r.trigger ? " · " + r.trigger : ""}`, short: "terugval" });
-      tips.push(TRIGGER_TIPS[r.trigger] || "Log wat er vlak voor gebeurde, zo ontdek je je patroon.");
+      tips.push(TRIGGER_TIPS[r.trigger] || (window.Focus && Focus.TRIGGER_TIPS[r.trigger]) || "Log wat er vlak voor gebeurde, zo ontdek je je patroon.");
       const hr = new Date(r.ts).getHours();
       if (hr >= 21 || hr < 3) tips.push(`Je risicomoment ligt rond ${hm(r.ts)}. Zet je nachtmelding een half uur eerder en leg je telefoon dan weg.`);
     } else if (!empty && s.startDate < end) {

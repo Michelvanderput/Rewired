@@ -4,13 +4,19 @@
   const DAY = Store.DAY;
   const S = () => Store.s;
 
-  const ALL = [...(window.LESSONS_A || []), ...(window.LESSONS_B || [])];
-  DATA.lessons = ALL; // other modules keep using DATA.lessons
+  // focus lessons (porn / gambling / ADHD) only count and show when that focus is chosen in Profiel
+  const EVERY = [...(window.LESSONS_A || []), ...(window.LESSONS_B || []), ...(window.LESSONS_C || [])];
+  const shown = l => !l.focus || (window.Focus && Focus.has(l.focus));
+  const all = () => EVERY.filter(shown);
+  DATA.lessons = EVERY; // other modules keep using DATA.lessons (lookups by id)
   const BOOSTS = window.LEARN_BOOSTS || [];
-  const PATHS = window.LEARN_PATHS || [];
-  const CATS = ["Wetenschap", "Technieken", "Mindset", "Lichaam", "Relaties", "Omgeving", "Herstel", "Motivatie"];
-  const CAT_E = { Wetenschap: "🧠", Technieken: "🛠️", Mindset: "🧭", Lichaam: "💪", Relaties: "🤝", Omgeving: "🏠", Herstel: "🩹", Motivatie: "🔥" };
-  const byId = id => ALL.find(l => l.id === id);
+  const PATHS_BASE = window.LEARN_PATHS || [], PATHS_FOCUS = window.LEARN_PATHS_FOCUS || [];
+  const paths = () => [...PATHS_FOCUS.filter(p => window.Focus && Focus.has(p.focus)), ...PATHS_BASE];
+  const FOCUS_CAT = { porn: "Porno", gambling: "Gokken", adhd: "ADHD" };
+  const BASE_CATS = ["Wetenschap", "Technieken", "Mindset", "Lichaam", "Relaties", "Omgeving", "Herstel", "Motivatie"];
+  const cats = () => [...(window.Focus ? Focus.list().map(f => FOCUS_CAT[f]) : []), ...BASE_CATS];
+  const CAT_E = { Wetenschap: "🧠", Technieken: "🛠️", Mindset: "🧭", Lichaam: "💪", Relaties: "🤝", Omgeving: "🏠", Herstel: "🩹", Motivatie: "🔥", Porno: "🛡️", Gokken: "💶", ADHD: "⚡" };
+  const byId = id => EVERY.find(l => l.id === id);
 
   const done = () => S().lessonsDone || (S().lessonsDone = []);
   const saved = () => S().lessonSaved || (S().lessonSaved = []);
@@ -20,8 +26,8 @@
   let filter = "all", query = "", boostOffset = 0;
 
   function lessonOfDay() {
-    const unread = ALL.filter(l => !done().includes(l.id));
-    const pool = unread.length ? unread : ALL;
+    const unread = all().filter(l => !done().includes(l.id));
+    const pool = unread.length ? unread : all();
     return pool[dayNum() % pool.length];
   }
   const boost = () => BOOSTS[(dayNum() + boostOffset) % BOOSTS.length];
@@ -31,10 +37,10 @@
   /* ---------- list ---------- */
   function filtered() {
     const q = query.trim().toLowerCase();
-    return ALL.filter(l => {
+    return all().filter(l => {
       if (filter === "saved" && !saved().includes(l.id)) return false;
       if (filter === "todo" && done().includes(l.id)) return false;
-      if (CATS.includes(filter) && l.cat !== filter) return false;
+      if (cats().includes(filter) && l.cat !== filter) return false;
       if (q && !(l.t + " " + l.take + " " + l.body).toLowerCase().includes(q)) return false;
       return true;
     });
@@ -56,7 +62,7 @@
 
   /* ---------- view ---------- */
   function view() {
-    const d = done().length, tot = ALL.length, lod = lessonOfDay();
+    const tot = all().length, d = all().filter(l => done().includes(l.id)).length, lod = lessonOfDay();
     const correct = Object.values(quiz()).filter(v => v === 1).length;
     return `
       <header class="page-head" data-anim><div><div class="eyebrow">Kennis is kracht</div><h1>Leren</h1></div>
@@ -75,7 +81,7 @@
       </button>
 
       <div class="section-title" data-anim><h3>Leerpaden</h3><span class="small muted">${correct} quizvragen goed</span></div>
-      <div class="ln-paths" data-anim>${PATHS.map(p => {
+      <div class="ln-paths" data-anim>${paths().map(p => {
         const pr = pathProgress(p), pct = pr.n / pr.tot;
         return `<button class="ln-path ${pr.n === pr.tot ? "complete" : ""}" data-path="${p.id}">
           <span class="ln-path-ring" style="--p:${pct}"><span>${p.e}</span></span>
@@ -84,7 +90,7 @@
 
       <div class="section-title" data-anim><h3>Alle lessen</h3><span class="small muted">${tot}</span></div>
       <input class="field" data-ln-search placeholder="🔍 Zoek een onderwerp, bijv. slaap of stress" value="${esc(query)}" data-anim style="margin-bottom:10px">
-      <div class="ln-filters" data-anim>${[["all", "Alles"], ["todo", "Nog lezen"], ["saved", "⭐ Bewaard"], ...CATS.map(c => [c, CAT_E[c] + " " + c])].map(([k, t]) => `<button class="chip ${filter === k ? "on" : ""}" data-ln-filter="${k}">${t}</button>`).join("")}</div>
+      <div class="ln-filters" data-anim>${[["all", "Alles"], ["todo", "Nog lezen"], ["saved", "⭐ Bewaard"], ...cats().map(c => [c, CAT_E[c] + " " + c])].map(([k, t]) => `<button class="chip ${filter === k ? "on" : ""}" data-ln-filter="${k}">${t}</button>`).join("")}</div>
       <div data-ln-list data-anim>${listHtml()}</div>`;
   }
 
@@ -118,7 +124,7 @@
 
   /* ---------- path sheet ---------- */
   function openPath(id) {
-    const p = PATHS.find(x => x.id === id);
+    const p = paths().find(x => x.id === id);
     const pr = pathProgress(p);
     sheet(`
       <div style="font-size:40px">${p.e}</div>
@@ -157,9 +163,9 @@
   }
 
   function nextOf(l, pathId) {
-    if (pathId) { const p = PATHS.find(x => x.id === pathId); const i = p.ids.indexOf(l.id); if (i >= 0 && i < p.ids.length - 1) return byId(p.ids[i + 1]); }
-    const same = ALL.filter(x => x.cat === l.cat); const i = same.indexOf(l);
-    return same.slice(i + 1).find(x => !done().includes(x.id)) || ALL.find(x => !done().includes(x.id) && x.id !== l.id) || null;
+    if (pathId) { const p = paths().find(x => x.id === pathId); const i = p.ids.indexOf(l.id); if (i >= 0 && i < p.ids.length - 1) return byId(p.ids[i + 1]); }
+    const same = all().filter(x => x.cat === l.cat); const i = same.indexOf(l);
+    return same.slice(i + 1).find(x => !done().includes(x.id)) || all().find(x => !done().includes(x.id) && x.id !== l.id) || null;
   }
 
   function open(id, { path } = {}) {
@@ -215,5 +221,5 @@
     });
   }
 
-  window.Learn = { view, after, handleClick, open, openPath, ALL, PATHS };
+  window.Learn = { view, after, handleClick, open, openPath, all, paths };
 })();
