@@ -125,6 +125,12 @@ function message(id, rec, now = Date.now(), slotDay = null) {
     const n = days[slotDay || (rec.tz ? localNow(rec.tz, new Date(now)).day : "")] || Object.values(days)[0];
     return { title: n ? n.title : "Tijd voor je gewoonte", body: n ? n.body : "Klein beginnen mag.", url: "./?open=home", tag: id };
   }
+  if (id === "rmorning") {
+    return { title: "🌅 Je ochtendroutine", body: `Goedemorgen${name}. Telefoon even weg, eerst jouw stappen. Tik om te beginnen.`, url: "./?open=routine-morning", tag: "rmorning" };
+  }
+  if (id === "revening") {
+    return { title: "🌙 Tijd om je dag af te sluiten", body: `Plan morgen, telefoon naar de gang en rust. Tik om je avondroutine te starten.`, url: "./?open=routine-evening", tag: "revening" };
+  }
   if (id === "weekly") {
     return { title: "🪞 Weekreflectie", body: `Hoe ging je week${name}? Drie vragen, twee minuten.`, url: "./?open=reflect", tag: "weekly" };
   }

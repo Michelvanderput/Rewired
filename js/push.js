@@ -8,6 +8,8 @@
     { id: "midday", e: "💡", t: "Middag", s: "Gedachte van de dag", def: "12:30", on: false },
     { id: "evening", e: "✍️", t: "Avond check-in", s: "Log je stemming", def: "21:00", on: true },
     { id: "night", e: "🌙", t: "Bedtijd", s: "Telefoon weg, naar bed", def: "23:00", on: true },
+    { id: "rmorning", e: "🌅", t: "Ochtendroutine", s: "Start je dag bewust · niet als hij al gedaan is", def: "07:00", on: true },
+    { id: "revening", e: "🌙", t: "Avondroutine", s: "Sluit je dag af · niet als hij al gedaan is", def: "22:00", on: true },
     { id: "weekly", e: "🪞", t: "Weekreflectie", s: "Zondag · 3 vragen over je week", def: "19:00", on: true }
   ];
   /* Habit reminders per moment of the day; which habits are included fades with automaticity (Habits.nudges) */
@@ -72,7 +74,8 @@
     const r = prefs().reminders.weekly;
     return { weekly: Object.assign({}, r, { on: !!r.on && !(window.Reflect && Reflect.doneThisWeek()) }) };
   }
-  const sig = () => JSON.stringify([Store.s.startDate, Store.s.name, prefs().reminders, prefs().risk, prefs().nudge, prefs().nudgeTimes, risk(), habitNudges(), weeklyReminder(), window.Recap && Recap.summary(Store.dayKey())]);
+  const doneDays = () => (window.Routine ? Routine.doneDays() : {});
+  const sig = () => JSON.stringify([doneDays(), Store.s.startDate, Store.s.name, prefs().reminders, prefs().risk, prefs().nudge, prefs().nudgeTimes, risk(), habitNudges(), weeklyReminder(), window.Recap && Recap.summary(Store.dayKey())]);
 
   function payload(sub) {
     const s = Store.s, r = risk(), hn = habitNudges();
@@ -82,6 +85,7 @@
       reminders: Object.assign({}, prefs().reminders, weeklyReminder(), r.reminders, hn.reminders),
       risks: r.risks,
       nudges: hn.nudges,
+      doneDays: doneDays(),
       startDate: s.startDate,
       name: s.name || "",
       // yesterday + today so the morning notification can summarise the day that just ended

@@ -11,7 +11,7 @@ const user = z.string().max(64).transform(s => s.trim().toLowerCase()).refine(va
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /* ---------- /api/subscribe ---------- */
-const REMINDER_IDS = /** @type {const} */ (["morning", "midday", "evening", "night", "weekly", "risk0", "risk1", "risk2", "n0", "n1", "n2", "n3"]);
+const REMINDER_IDS = /** @type {const} */ (["morning", "midday", "evening", "night", "weekly", "rmorning", "revening", "risk0", "risk1", "risk2", "n0", "n1", "n2", "n3"]);
 const reminder = z.object({ on: z.unknown(), time: z.string().refine(validTime) }).transform(r => ({ on: !!r.on, time: r.time }));
 
 const Subscribe = z.object({
@@ -44,6 +44,13 @@ const Subscribe = z.object({
         if (day.safeParse(d).success && p.success) (out[id] = out[id] || {})[d] = { title: p.data.title.slice(0, 80), body: p.data.body.slice(0, 160) };
       });
     }
+    return out;
+  }),
+  // reminders that are not needed on a day because the routine is already done: { rmorning: "YYYY-MM-DD" }
+  doneDays: z.record(z.string(), z.unknown()).catch({}).optional().transform(d => {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const id of ["rmorning", "revening"]) if (d && day.safeParse(d[id]).success) out[id] = /** @type {string} */ (d[id]);
     return out;
   }),
   // labels for the personal risk-moment reminders (risk0..risk2), computed on the phone from the urge log

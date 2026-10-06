@@ -128,6 +128,9 @@
     const notes = s.journal.filter(j => j.ts >= start && j.ts < end).length;
     if (notes) good.push({ e: "📝", t: `${notes} dagboek${notes === 1 ? "notitie" : "notities"}`, short: "dagboek" });
 
+    // morning / evening routine
+    if (window.Routine && !empty) { const r = Routine.recapItems(day); good.push(...r.good); bad.push(...r.bad); }
+
     // app usage from iOS Shortcuts
     if (window.AppTrack) { const a = AppTrack.recapItems(day); good.push(...a.good); bad.push(...a.bad); tips.push(...a.tips); }
 

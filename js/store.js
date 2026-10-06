@@ -25,6 +25,7 @@
     habitStatus: {},     // {"YYYY-MM-DD": {habitId: {s: "min"|"skip", why}}}
     journal: [],         // [{ts, text, mood}]
     reflections: {},     // {mondayKey: {ts, good, hard, change}}  weekly reflection
+    routineLog: {},      // {"YYYY-MM-DD": {morning|evening: {done, skipped, start, end, short, text}}}  (config: routines)
     lessonsDone: [],
     sessions: { light: 0, breath: 0, meditate: 0, panic: 0, minutes: 0 },
     settings: { sound: true, haptics: true, lightWarned: false }

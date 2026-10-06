@@ -20,6 +20,7 @@ function due(rec, now) {
     // habit reminders only on the days the phone asked for; the weekly reflection only on Sunday
     if (/^n\d$/.test(id) && !((rec.nudges || {})[id] || {})[slotDay]) continue;
     if (id === "weekly" && new Date(slotDay + "T12:00:00Z").getUTCDay() !== 0) continue;
+    if ((rec.doneDays || {})[id] === slotDay) continue; // routine already done that day
     out.push({ id, slotDay });
   }
   return out;

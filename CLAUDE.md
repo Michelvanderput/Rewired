@@ -7,7 +7,7 @@ read it before adding or changing behaviour (plans, reminders, streaks, rewards,
 ## Stack and layout
 
 - No build step. `index.html` loads plain scripts from `js/` in order; each file is an IIFE that sets one global
-  (`Store`, `FX`, `Sound`, `Monitor`, `Push`, `Sync`, `Habits`, `Recap`, `Rewards`, `AppTrack`, `Risk`, `Reflect`, `Learn`, `Tools`, `App`).
+  (`Store`, `FX`, `Sound`, `Monitor`, `Push`, `Sync`, `Habits`, `Recap`, `Rewards`, `AppTrack`, `Risk`, `Reflect`, `Routine`, `Learn`, `Tools`, `App`).
   New globals must be added to `biome.json` → `javascript.globals`.
 - GSAP 3 is vendored in `js/vendor/` (the CSP only allows `'self'` scripts).
 - State: one object in `localStorage["rewired.v1"]` (`js/store.js`). Every new top-level key that the user creates

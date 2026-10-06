@@ -31,6 +31,7 @@ gedragswetenschap voor gewoontevorming (zie [`docs/ontwerp.md`](docs/ontwerp.md)
 | Minimaal / overslaan | Minimale versie telt als komen opdagen, overslaan met reden; weekdoel (2–7×) en "nooit twee keer missen" |
 | Automatisme | Elke 14 dagen 4 vragen (SRBAI); bij ≥ 5,5 studeert een gewoonte af naar "Automatisch". Herinneringen bouwen af: elke dag → om de dag → alleen na een misser → uit |
 | Risicomomenten | Drang-log met plek en gevoel; na 10 logs je top-3 tijdvensters, een waarschuwing op Home en een melding 15 min vooraf |
+| Ochtend- & avondroutine | Begeleide routine stap voor stap (timer, plan voor morgen, check-in), volledig of kort, aan te passen en uit te breiden. Telt mee voor gewoontes en Dopamine Reset; het avondplan komt 's ochtends terug; herinnering alleen als de routine nog niet gedaan is |
 | Weekreflectie | Elke zondag 3 vragen, met de feiten van je week en je voornemen van vorige week |
 | Pushmeldingen | Ochtend-recap (score + samenvatting), middag (quote), avond check-in en risicomoment, met instelbare tijden en een testknop |
 

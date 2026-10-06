@@ -73,6 +73,8 @@
     out.learnLog = Object.assign({}, older.learnLog || {}, newer.learnLog || {});
     out.recoveryDone = Object.assign({}, older.recoveryDone || {}, newer.recoveryDone || {});
     out.reflections = Object.assign({}, older.reflections || {}, newer.reflections || {});
+    out.routineLog = Object.assign({}, older.routineLog || {});
+    Object.entries(newer.routineLog || {}).forEach(([d, m]) => { out.routineLog[d] = Object.assign({}, out.routineLog[d] || {}, m); });
     out.rewardSeen = [...new Set([...(older.rewardSeen || []), ...(newer.rewardSeen || [])])];
     ["checkins", "reset", "habitLog"].forEach(k => { out[k] = Object.assign({}, older[k] || {}, newer[k] || {}); });
     out.habitVal = Object.assign({}, older.habitVal || {});

@@ -107,3 +107,13 @@ describe("habit nudges and weekly reflection", () => {
     expect(r.nudges).toEqual({ n0: { "2026-10-07": { title: "a", body: "b" } } });
   });
 });
+
+describe("routine reminders", () => {
+  it("skip the day the routine is already done", () => {
+    const rec = { tz: "Europe/Amsterdam", lastSent: {}, reminders: { rmorning: { on: true, time: "07:00" }, revening: { on: true, time: "22:00" } }, doneDays: { revening: "2026-10-06" } };
+    expect(due(rec, new Date("2026-10-06T20:10:00Z"))).toEqual([]); // 22:10, evening already done
+    expect(due(rec, new Date("2026-10-07T05:10:00Z")).map(d => d.id)).toEqual(["rmorning"]);
+    expect(message("rmorning", { name: "Michel" }).url).toBe("./?open=routine-morning");
+    expect(message("revening", {}).url).toBe("./?open=routine-evening");
+  });
+});

@@ -45,6 +45,7 @@
         </div>
       </header>
       ${Push.homeCardHtml()}
+      ${Routine.homeCardHtml()}
       ${Risk.homeCardHtml()}
       ${Reflect.homeCardHtml()}
       ${Rewards.recoveryCardHtml()}
@@ -133,6 +134,7 @@
         ${tile("meditate", "🧘", "Meditatie", "Body scan & rust", "pink", "#f472b6")}
         ${tile("surf", "🌊", "Urge surfing", "Rijd de golf uit", "cyan", "#0ea5e9")}
         ${tile("panic", "🚨", "Noodmodus", "Directe hulp", "red", "#ff2d55")}
+        ${tile("routines", "🌅", "Ochtend & avond", "Begin en eindig je dag goed", "amber", "#fb923c")}
         ${tile("habits", "✅", "Gewoontes", "Bouw consistentie", "green", "#34d399")}
         ${tile("journal", "✍️", "Dagboek", "Reflecteer", "amber", "#fbbf24")}
         ${tile("urge", "📍", "Drang loggen", "Vind je patronen", "violet", "#7c5cff")}
@@ -925,7 +927,7 @@
   const ACTIONS = {
     checkin: checkinSheet, urge: urgeSheet, relapse: () => relapseSheet(), journal: journalSheet, habits: () => Habits.manageSheet(), addHabit: () => Habits.addSheet(),
     light: Tools.openLight, breath: Tools.breathPicker, meditate: () => Tools.meditationPicker(), surf: () => Tools.meditationPicker("surf"),
-    panic: Tools.panic, reflect: () => Reflect.open(), blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
+    panic: Tools.panic, reflect: () => Reflect.open(), routines: () => Routine.overview(), blocker: blockerSheet, share: shareProgress, export: exportData, wipe, editReasons: reasonsSheet, editStart: startSheet, recap: () => Recap.show(), rewards: () => Rewards.manage(), apps: () => AppTrack.overview(),
     pushSetup: () => Push.enable().then(() => { Sound.success(); toast("Meldingen staan aan 🔔"); render(false); })
       .catch(e => toast(e.message === "denied" ? "Toestemming geweigerd" : e.message === "config" ? "Server nog niet ingesteld" : "Aanzetten mislukt")),
     pushDismiss: () => { Push.prefs().dismissed = true; Store.save(); render(false); }
@@ -942,6 +944,9 @@
     v.addEventListener("click", e => {
       const a = e.target.closest("[data-action]");
       if (a) { haptic(); Sound.tap(); ACTIONS[a.dataset.action] && ACTIONS[a.dataset.action](); return; }
+
+      const ro = e.target.closest("[data-routine]");
+      if (ro) { haptic(); Sound.tap(); Routine.start(ro.dataset.routine); return; }
 
       const au = e.target.closest("[data-auto]");
       if (au) { haptic(); Sound.tap(); Habits.autoSheet(au.dataset.auto); return; }
@@ -1030,7 +1035,7 @@
     if (!what || !Store.s.onboarded) return;
     if ($("#fs-root").children.length) return;
     if (tab !== "home") switchTab("home");
-    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker, reflect: () => Reflect.open(), recap: () => { S().recapSeen = null; Recap.show(); } }[what];
+    const run = { checkin: checkinSheet, panic: Tools.panic, urge: urgeSheet, breath: Tools.breathPicker, reflect: () => Reflect.open(), "routine-morning": () => Routine.start("morning"), "routine-evening": () => Routine.start("evening"), recap: () => { S().recapSeen = null; Recap.show(); } }[what];
     if (run) setTimeout(run, 500);
   }
   if ("serviceWorker" in navigator) {

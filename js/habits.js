@@ -869,7 +869,16 @@
     if (h && h.type !== "check") setVal(h, today(), val(h) + amount, { quiet: true });
   }
 
-  window.Habits = { rollover, addToTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get,
+  /* A routine step done → the matching habit counts too (check: tick it, count/timer: add the amount) */
+  function markTpl(tpl, amount = 0) {
+    const h = S().habits.find(x => x.tpl === tpl);
+    if (!h) return false;
+    if (h.type === "check") { if (!isDone(h)) toggleCheck(h); return true; }
+    if ((h.type === "count" || h.type === "timer") && amount) { setVal(h, today(), val(h) + amount, { quiet: true }); return true; }
+    return false;
+  }
+
+  window.Habits = { rollover, addToTpl, markTpl, val, progress, over, fmt, listHtml, handleClick, openHabit, manageSheet, addSheet, editHabit, weekHtml, doneCount, isDone, streak, onSession, TEMPLATES, get,
     status, setStatus, shown, weekly, weekDone, atRisk, plan, planText, ANCHORS, SKIP_REASONS,
     active, autoDue, autoSheet, autoCardHtml, reminderLevel, nudges, monday };
 })();
